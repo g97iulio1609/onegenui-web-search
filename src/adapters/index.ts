@@ -2,8 +2,17 @@
 // @onegenui/web-search - Adapters Barrel Export
 // =============================================================================
 
-export { Crawl4AISearchAdapter } from "./crawl4ai-search.adapter";
-export { Crawl4AIScraperAdapter } from "./crawl4ai-scraper.adapter";
+// OneCrawl (Primary - Native TypeScript)
+export {
+  OneCrawlScraperAdapter,
+  createOneCrawlScraperAdapter,
+} from "./onecrawl.adapter";
+export {
+  OneCrawlSearchAdapter,
+  createOneCrawlSearchAdapter,
+} from "./onecrawl-search.adapter";
+
+// Browser Service (Fallback)
 export {
   BrowserServiceSearchAdapter,
   BrowserServiceScraperAdapter,

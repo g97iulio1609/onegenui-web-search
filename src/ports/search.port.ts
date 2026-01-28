@@ -46,7 +46,7 @@ export interface SearchResponse {
  * WebSearchPort - Primary port for web search operations
  *
  * Implementations:
- * - Crawl4AISearchAdapter (primary)
+ * - OneCrawlSearchAdapter (primary)
  * - BrowserServiceSearchAdapter (fallback)
  */
 export interface WebSearchPort {

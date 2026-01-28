@@ -61,7 +61,7 @@ export interface BatchScrapeResponse {
  * WebScraperPort - Primary port for web scraping operations
  *
  * Implementations:
- * - Crawl4AIScraperAdapter (primary)
+ * - OneCrawlScraperAdapter (primary)
  * - BrowserServiceScraperAdapter (fallback)
  */
 export interface WebScraperPort {

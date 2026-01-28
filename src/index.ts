@@ -7,7 +7,6 @@ export * from "./types";
 
 // Services
 export * from "./browser-service";
-export * from "./crawl4ai-service";
 
 // Utilities
 export * from "./logger";

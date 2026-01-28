@@ -5,7 +5,7 @@
 import { z } from "zod";
 
 // -----------------------------------------------------------------------------
-// Media Types (from Crawl4AI extraction) - Must be defined first
+// Media Types (from OneCrawl extraction) - Must be defined first
 // -----------------------------------------------------------------------------
 
 export const videoProviderSchema = z.enum([
@@ -150,7 +150,7 @@ export const scrapeResultSchema = z.object({
       }),
     )
     .optional(),
-  // New enhanced media extraction from Crawl4AI
+  // New enhanced media extraction from OneCrawl
   media: z
     .object({
       images: z.array(extractedImageSchema).optional(),

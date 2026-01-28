@@ -19,7 +19,7 @@ import type { SearchOptions, ScrapeOptions } from "../types";
 /**
  * BrowserServiceSearchAdapter - WebSearchPort fallback using agent-browser
  *
- * Used when Crawl4AI is not available. Slower but more reliable for
+ * Used when OneCrawl is not available. Slower but more reliable for
  * JavaScript-heavy pages.
  */
 export class BrowserServiceSearchAdapter implements WebSearchPort {
@@ -130,7 +130,7 @@ export class BrowserServiceSearchAdapter implements WebSearchPort {
 /**
  * BrowserServiceScraperAdapter - WebScraperPort fallback using agent-browser
  *
- * Used when Crawl4AI is not available. Better for JavaScript-heavy pages.
+ * Used when OneCrawl is not available. Better for JavaScript-heavy pages.
  */
 export class BrowserServiceScraperAdapter implements WebScraperPort {
   private service: BrowserService;

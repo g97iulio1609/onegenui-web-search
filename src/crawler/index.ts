@@ -1,7 +1,7 @@
 /**
  * Crawler Module
  *
- * Modular components for Crawl4AI web scraping service.
+ * Modular components for OneCrawl web scraping service.
  */
 
 // URL building
@@ -22,6 +22,3 @@ export {
   parseSearchResults,
   parseJsonResults,
 } from "./result-parsers";
-
-// Python path resolution
-export { findPythonPath, findPythonDir } from "./python-resolver";

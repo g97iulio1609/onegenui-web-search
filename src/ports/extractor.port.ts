@@ -58,7 +58,7 @@ export interface ExtractionOptions {
  * extraction strategies.
  *
  * Implementations:
- * - Crawl4AIExtractorAdapter (uses Crawl4AI's built-in extraction)
+ * - OneCrawlExtractorAdapter (native TypeScript)
  * - CheerioExtractorAdapter (lightweight, no browser needed)
  * - ReadabilityExtractorAdapter (uses Mozilla Readability)
  */

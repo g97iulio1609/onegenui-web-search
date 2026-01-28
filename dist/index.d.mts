@@ -249,47 +249,6 @@ declare class BrowserService {
 declare function getBrowserService(options?: BrowserServiceOptions): BrowserService;
 declare function closeBrowserService(): Promise<void>;
 
-interface Crawl4AIOptions {
-    maxResults?: number;
-    engine?: "google" | "duckduckgo" | "bing";
-    searchType?: "web" | "image" | "video" | "news";
-    includeLinks?: boolean;
-    maxContentLength?: number;
-    js_code?: string;
-    wait_for?: string;
-    js?: string;
-    waitFor?: string;
-    cache?: boolean;
-    noMedia?: boolean;
-}
-declare class Crawl4AIService {
-    private pythonPath;
-    private scriptPath;
-    constructor();
-    /**
-     * Search the web using Crawl4AI by scraping search engine results pages.
-     * Supports web, image, video, and news search types.
-     * Uses parallel crawling for multiple engines/fallbacks.
-     */
-    search(query: string, options?: SearchOptions, emit?: ActionEmitter): Promise<SearchResults>;
-    /**
-     * Search multiple queries or sources in parallel
-     */
-    searchParallel(queries: Array<{
-        query: string;
-        engine?: string;
-        searchType?: string;
-    }>, emit?: ActionEmitter): Promise<SearchResults[]>;
-    /**
-     * Scrape one or more URLs in parallel with full media extraction
-     */
-    scrape(urls: string | string[], options?: ScrapeOptions & Crawl4AIOptions, emit?: ActionEmitter): Promise<ScrapeResult[]>;
-    /**
-     * Transform Python crawler results to TypeScript ScrapeResult format.
-     */
-    private transformCrawlResults;
-}
-
 /**
  * Write a debug log entry to web.log file AND console
  */
@@ -406,7 +365,7 @@ interface SearchResponse {
  * WebSearchPort - Primary port for web search operations
  *
  * Implementations:
- * - Crawl4AISearchAdapter (primary)
+ * - OneCrawlSearchAdapter (primary)
  * - BrowserServiceSearchAdapter (fallback)
  */
 interface WebSearchPort {
@@ -477,7 +436,7 @@ interface BatchScrapeResponse {
  * WebScraperPort - Primary port for web scraping operations
  *
  * Implementations:
- * - Crawl4AIScraperAdapter (primary)
+ * - OneCrawlScraperAdapter (primary)
  * - BrowserServiceScraperAdapter (fallback)
  */
 interface WebScraperPort {
@@ -567,7 +526,7 @@ interface ExtractionOptions {
  * extraction strategies.
  *
  * Implementations:
- * - Crawl4AIExtractorAdapter (uses Crawl4AI's built-in extraction)
+ * - OneCrawlExtractorAdapter (native TypeScript)
  * - CheerioExtractorAdapter (lightweight, no browser needed)
  * - ReadabilityExtractorAdapter (uses Mozilla Readability)
  */
@@ -594,57 +553,53 @@ interface ContentExtractorPort {
 declare const basicContentExtractor: ContentExtractorPort;
 
 /**
- * Crawl4AISearchAdapter - WebSearchPort implementation using Crawl4AI
- *
- * Features:
- * - Query-level LRU caching with configurable TTL
- * - Progress streaming
- * - Timeout support
- * - Graceful degradation
+ * OneCrawl Adapter for @onegenui/web-search
+ * Implements WebScraperPort using OneCrawl native TypeScript crawler.
  */
-declare class Crawl4AISearchAdapter implements WebSearchPort {
-    private service;
-    private cache;
-    private available;
-    constructor(cacheSize?: number, cacheTTL?: number);
-    search(query: string, options?: ExtendedSearchOptions): Promise<SearchResponse>;
-    isAvailable(): Promise<boolean>;
-    getName(): string;
-    /**
-     * Clear the search cache
-     */
-    clearCache(): void;
-}
 
 /**
- * Crawl4AIScraperAdapter - WebScraperPort implementation using Crawl4AI
+ * OneCrawlScraperAdapter - WebScraperPort implementation using OneCrawl
  *
- * Features:
- * - URL-level LRU caching with configurable TTL
- * - Batch scraping with single Python process
- * - Progress streaming
- * - Timeout support
- * - Graceful degradation with partial results
+ * This adapter bridges the OneGenUI web-search ports with the OneCrawl
+ * TypeScript crawler, providing native scraping without Python dependencies.
  */
-declare class Crawl4AIScraperAdapter implements WebScraperPort {
-    private service;
-    private cache;
+declare class OneCrawlScraperAdapter implements WebScraperPort {
+    private scrapeUseCase;
     private available;
-    constructor(cacheSize?: number, cacheTTL?: number);
     scrape(url: string, options?: ExtendedScrapeOptions): Promise<ScrapeResponse>;
     scrapeMany(urls: string[], options?: ExtendedScrapeOptions): Promise<BatchScrapeResponse>;
     isAvailable(): Promise<boolean>;
     getName(): string;
-    /**
-     * Clear the scrape cache
-     */
-    clearCache(): void;
 }
+/**
+ * Create an OneCrawl scraper adapter
+ */
+declare function createOneCrawlScraperAdapter(): WebScraperPort;
+
+/**
+ * OneCrawl Search Adapter for @onegenui/web-search
+ * Implements WebSearchPort using OneCrawl native TypeScript crawler.
+ */
+
+/**
+ * OneCrawlSearchAdapter - WebSearchPort implementation using OneCrawl
+ */
+declare class OneCrawlSearchAdapter implements WebSearchPort {
+    private searchUseCase;
+    private available;
+    search(query: string, options?: ExtendedSearchOptions): Promise<SearchResponse>;
+    isAvailable(): Promise<boolean>;
+    getName(): string;
+}
+/**
+ * Create an OneCrawl search adapter
+ */
+declare function createOneCrawlSearchAdapter(): WebSearchPort;
 
 /**
  * BrowserServiceSearchAdapter - WebSearchPort fallback using agent-browser
  *
- * Used when Crawl4AI is not available. Slower but more reliable for
+ * Used when OneCrawl is not available. Slower but more reliable for
  * JavaScript-heavy pages.
  */
 declare class BrowserServiceSearchAdapter implements WebSearchPort {
@@ -658,7 +613,7 @@ declare class BrowserServiceSearchAdapter implements WebSearchPort {
 /**
  * BrowserServiceScraperAdapter - WebScraperPort fallback using agent-browser
  *
- * Used when Crawl4AI is not available. Better for JavaScript-heavy pages.
+ * Used when OneCrawl is not available. Better for JavaScript-heavy pages.
  */
 declare class BrowserServiceScraperAdapter implements WebScraperPort {
     private service;
@@ -786,4 +741,4 @@ declare function parseSearchResults(markdown: string, maxResults: number): Searc
  */
 declare function parseJsonResults(content: string, maxResults: number): SearchResult[] | null;
 
-export { type ActionEmitter, type BatchScrapeResponse, type BrowserAction, type BrowserActionStatus, BrowserService, type BrowserServiceOptions, BrowserServiceScraperAdapter, BrowserServiceSearchAdapter, type ContentExtractorPort, type Crawl4AIOptions, Crawl4AIScraperAdapter, Crawl4AISearchAdapter, Crawl4AIService, type ExtendedScrapeOptions, type ExtendedSearchOptions, type ExtractedAudio, type ExtractedContent, type ExtractedImage, type ExtractedVideo, type ExtractionOptions, type HealthStatus, type PageSnapshot, type RetryConfig, type ScrapeOptions, type ScrapeProgress, type ScrapeProgressCallback, type ScrapeResponse, type ScrapeResult, type SearchEngine, type SearchOptions, type SearchProgress, type SearchProgressCallback, type SearchResponse, type SearchResult, type SearchResults, type SearchType, type SnapshotRef, type VideoProvider, type WebScraperPort, type WebSearchPort, WebSearchUseCase, basicContentExtractor, browserActionSchema, buildSearchUrl, clearLog, closeBrowserService, extractedAudioSchema, extractedImageSchema, extractedVideoSchema, getBrowserService, logDebug, noopWebScraper, noopWebSearch, normalizeSearchType, parseImageResults, parseJsonResults, parseSearchResults, parseVideoResults, scrapeResultSchema, searchResultSchema, searchResultsSchema, videoProviderSchema, webBatchScrapeTool, webHealthCheckTool, webScrapeTool, webSearchTool, webSearchTools, webSnapshotTool };
+export { type ActionEmitter, type BatchScrapeResponse, type BrowserAction, type BrowserActionStatus, BrowserService, type BrowserServiceOptions, BrowserServiceScraperAdapter, BrowserServiceSearchAdapter, type ContentExtractorPort, type ExtendedScrapeOptions, type ExtendedSearchOptions, type ExtractedAudio, type ExtractedContent, type ExtractedImage, type ExtractedVideo, type ExtractionOptions, type HealthStatus, OneCrawlScraperAdapter, OneCrawlSearchAdapter, type PageSnapshot, type RetryConfig, type ScrapeOptions, type ScrapeProgress, type ScrapeProgressCallback, type ScrapeResponse, type ScrapeResult, type SearchEngine, type SearchOptions, type SearchProgress, type SearchProgressCallback, type SearchResponse, type SearchResult, type SearchResults, type SearchType, type SnapshotRef, type VideoProvider, type WebScraperPort, type WebSearchPort, WebSearchUseCase, basicContentExtractor, browserActionSchema, buildSearchUrl, clearLog, closeBrowserService, createOneCrawlScraperAdapter, createOneCrawlSearchAdapter, extractedAudioSchema, extractedImageSchema, extractedVideoSchema, getBrowserService, logDebug, noopWebScraper, noopWebSearch, normalizeSearchType, parseImageResults, parseJsonResults, parseSearchResults, parseVideoResults, scrapeResultSchema, searchResultSchema, searchResultsSchema, videoProviderSchema, webBatchScrapeTool, webHealthCheckTool, webScrapeTool, webSearchTool, webSearchTools, webSnapshotTool };

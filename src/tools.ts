@@ -9,8 +9,8 @@ import { logDebug } from "./logger";
 import type { SearchResults, ScrapeResult, PageSnapshot } from "./types";
 import { WebSearchUseCase } from "./use-cases";
 import {
-  Crawl4AISearchAdapter,
-  Crawl4AIScraperAdapter,
+  OneCrawlSearchAdapter,
+  OneCrawlScraperAdapter,
   BrowserServiceSearchAdapter,
   BrowserServiceScraperAdapter,
 } from "./adapters";
@@ -50,12 +50,14 @@ let webSearchUseCaseInstance: WebSearchUseCase | null = null;
 
 /**
  * Get or create the WebSearchUseCase with configured adapters
+ * OneCrawl is the primary adapter (pure TypeScript, no Python)
  */
 function getWebSearchUseCase(): WebSearchUseCase {
   if (webSearchUseCaseInstance) return webSearchUseCaseInstance;
 
-  const searchAdapters: WebSearchPort[] = [new Crawl4AISearchAdapter()];
-  const scraperAdapters: WebScraperPort[] = [new Crawl4AIScraperAdapter()];
+  // OneCrawl as primary (native TypeScript, fast startup)
+  const searchAdapters: WebSearchPort[] = [new OneCrawlSearchAdapter()];
+  const scraperAdapters: WebScraperPort[] = [new OneCrawlScraperAdapter()];
 
   // Add browser service adapters as fallback if enabled
   if (isAgenticBrowserFallbackEnabled()) {
