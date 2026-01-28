@@ -1,0 +1,37 @@
+{
+    "name": "@onegenui/web-search",
+    "version": "0.1.0",
+    "description": "Web search and content scraping for generative UI using agent-browser",
+    "license": "Apache-2.0",
+    "main": "./dist/index.js",
+    "module": "./dist/index.mjs",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "check-types": "tsc --noEmit",
+        "postinstall": "agent-browser install || true"
+    },
+    "dependencies": {
+        "@onegenui/mcp": "workspace:*",
+        "agent-browser": "^0.1.0",
+        "zod": "^4.0.0",
+        "zod-to-json-schema": "^3.24.0"
+    },
+    "peerDependencies": {
+        "ai": "^6.0.0"
+    },
+    "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "ai": "^6.0.39",
+        "tsup": "^8.0.0",
+        "typescript": "5.9.2"
+    }
+}

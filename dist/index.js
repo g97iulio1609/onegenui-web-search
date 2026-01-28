@@ -1,0 +1,2339 @@
+"use strict";
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/index.ts
+var index_exports = {};
+__export(index_exports, {
+  BrowserService: () => BrowserService,
+  BrowserServiceScraperAdapter: () => BrowserServiceScraperAdapter,
+  BrowserServiceSearchAdapter: () => BrowserServiceSearchAdapter,
+  Crawl4AIScraperAdapter: () => Crawl4AIScraperAdapter,
+  Crawl4AISearchAdapter: () => Crawl4AISearchAdapter,
+  Crawl4AIService: () => Crawl4AIService,
+  WebSearchUseCase: () => WebSearchUseCase,
+  basicContentExtractor: () => basicContentExtractor,
+  browserActionSchema: () => browserActionSchema,
+  buildSearchUrl: () => buildSearchUrl,
+  clearLog: () => clearLog,
+  closeBrowserService: () => closeBrowserService,
+  extractedAudioSchema: () => extractedAudioSchema,
+  extractedImageSchema: () => extractedImageSchema,
+  extractedVideoSchema: () => extractedVideoSchema,
+  getBrowserService: () => getBrowserService,
+  logDebug: () => logDebug,
+  noopWebScraper: () => noopWebScraper,
+  noopWebSearch: () => noopWebSearch,
+  normalizeSearchType: () => normalizeSearchType,
+  parseImageResults: () => parseImageResults,
+  parseJsonResults: () => parseJsonResults,
+  parseSearchResults: () => parseSearchResults2,
+  parseVideoResults: () => parseVideoResults,
+  scrapeResultSchema: () => scrapeResultSchema,
+  searchResultSchema: () => searchResultSchema,
+  searchResultsSchema: () => searchResultsSchema,
+  videoProviderSchema: () => videoProviderSchema,
+  webBatchScrapeTool: () => webBatchScrapeTool,
+  webHealthCheckTool: () => webHealthCheckTool,
+  webScrapeTool: () => webScrapeTool,
+  webSearchTool: () => webSearchTool,
+  webSearchTools: () => webSearchTools,
+  webSnapshotTool: () => webSnapshotTool
+});
+module.exports = __toCommonJS(index_exports);
+
+// src/types.ts
+var import_zod = require("zod");
+var videoProviderSchema = import_zod.z.enum([
+  "youtube",
+  "vimeo",
+  "dailymotion",
+  "twitch",
+  "tiktok",
+  "twitter"
+]);
+var extractedImageSchema = import_zod.z.object({
+  src: import_zod.z.string(),
+  alt: import_zod.z.string().optional(),
+  title: import_zod.z.string().optional(),
+  score: import_zod.z.number().optional(),
+  description: import_zod.z.string().optional(),
+  width: import_zod.z.number().optional(),
+  height: import_zod.z.number().optional()
+});
+var extractedVideoSchema = import_zod.z.object({
+  src: import_zod.z.string(),
+  embedUrl: import_zod.z.string().optional(),
+  provider: videoProviderSchema.optional(),
+  title: import_zod.z.string().optional(),
+  description: import_zod.z.string().optional(),
+  duration: import_zod.z.number().optional(),
+  thumbnail: import_zod.z.string().optional()
+});
+var extractedAudioSchema = import_zod.z.object({
+  src: import_zod.z.string(),
+  title: import_zod.z.string().optional(),
+  description: import_zod.z.string().optional(),
+  duration: import_zod.z.number().optional()
+});
+var searchResultSchema = import_zod.z.object({
+  title: import_zod.z.string(),
+  url: import_zod.z.string(),
+  snippet: import_zod.z.string(),
+  favicon: import_zod.z.string().optional(),
+  position: import_zod.z.number().optional(),
+  type: import_zod.z.enum(["web", "image", "video", "news"]).optional(),
+  // Rich media info for image/video results
+  media: import_zod.z.object({
+    url: import_zod.z.string(),
+    thumbnail: import_zod.z.string().optional(),
+    duration: import_zod.z.string().optional(),
+    views: import_zod.z.string().optional(),
+    publishedAt: import_zod.z.string().optional(),
+    provider: videoProviderSchema.optional(),
+    dimensions: import_zod.z.object({
+      width: import_zod.z.number(),
+      height: import_zod.z.number()
+    }).optional()
+  }).optional(),
+  // Additional metadata for news/rich results
+  image: import_zod.z.string().optional(),
+  date: import_zod.z.string().optional(),
+  source: import_zod.z.string().optional()
+});
+var searchResultsSchema = import_zod.z.object({
+  query: import_zod.z.string(),
+  results: import_zod.z.array(searchResultSchema),
+  totalResults: import_zod.z.number().optional(),
+  searchTime: import_zod.z.number().optional()
+});
+var browserActionSchema = import_zod.z.object({
+  id: import_zod.z.string(),
+  action: import_zod.z.enum([
+    "navigating",
+    "searching",
+    "extracting",
+    "clicking",
+    "typing",
+    "waiting",
+    "capturing"
+  ]),
+  target: import_zod.z.string().optional(),
+  url: import_zod.z.string().optional(),
+  status: import_zod.z.enum(["pending", "loading", "complete", "error"]),
+  message: import_zod.z.string().optional(),
+  error: import_zod.z.string().optional(),
+  timestamp: import_zod.z.number()
+});
+var scrapeResultSchema = import_zod.z.object({
+  url: import_zod.z.string(),
+  title: import_zod.z.string(),
+  content: import_zod.z.string(),
+  headings: import_zod.z.array(import_zod.z.string()).optional(),
+  links: import_zod.z.array(
+    import_zod.z.object({
+      text: import_zod.z.string(),
+      href: import_zod.z.string()
+    })
+  ).optional(),
+  // Legacy format for backwards compatibility
+  images: import_zod.z.array(
+    import_zod.z.object({
+      alt: import_zod.z.string(),
+      src: import_zod.z.string()
+    })
+  ).optional(),
+  // New enhanced media extraction from Crawl4AI
+  media: import_zod.z.object({
+    images: import_zod.z.array(extractedImageSchema).optional(),
+    videos: import_zod.z.array(extractedVideoSchema).optional(),
+    audio: import_zod.z.array(extractedAudioSchema).optional()
+  }).optional(),
+  metadata: import_zod.z.record(import_zod.z.string(), import_zod.z.string()).optional()
+});
+
+// src/browser/cli-runner.ts
+var import_child_process = require("child_process");
+var import_util = require("util");
+var execAsync = (0, import_util.promisify)(import_child_process.exec);
+async function runCommand(command, json = true) {
+  try {
+    const fullCommand = `npx agent-browser ${command}${json ? " --json" : ""}`;
+    const { stdout, stderr } = await execAsync(fullCommand, {
+      timeout: 6e4,
+      maxBuffer: 10 * 1024 * 1024
+      // 10MB
+    });
+    if (stderr && !stderr.includes("WARN")) {
+      console.warn("[agent-browser] stderr:", stderr);
+    }
+    if (json && stdout.trim()) {
+      try {
+        const parsed = JSON.parse(stdout.trim());
+        return { success: true, data: parsed };
+      } catch {
+        return { success: true, data: stdout.trim() };
+      }
+    }
+    return { success: true, data: stdout.trim() };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[agent-browser] command failed:", message);
+    return { success: false, error: message };
+  }
+}
+
+// src/browser/tree-parser.ts
+function parseSearchResults(tree, refs, maxResults) {
+  const results = [];
+  const linkPattern = /- link "([^"]+)" \[ref=(e\d+)\]/g;
+  let match;
+  while ((match = linkPattern.exec(tree)) !== null && results.length < maxResults) {
+    const [, title, refId] = match;
+    const ref = refId ? refs[refId] : void 0;
+    if (title && isSearchResult(title)) {
+      results.push({
+        title,
+        url: "",
+        snippet: ref?.name ?? "",
+        position: results.length + 1
+      });
+    }
+  }
+  return results;
+}
+function isSearchResult(title) {
+  const skipPatterns = [
+    /^(Images|Videos|News|Maps|Shopping|Books|Flights)$/i,
+    /^(Sign in|Settings|Privacy|Terms)$/i,
+    /^(About|Help|Feedback)$/i,
+    /^More$/i
+  ];
+  return !skipPatterns.some((p) => p.test(title));
+}
+function extractContentFromTree(tree, maxLength) {
+  const contentPattern = /- (?:heading|text|paragraph|StaticText) "([^"]+)"/g;
+  const parts = [];
+  let match;
+  while ((match = contentPattern.exec(tree)) !== null) {
+    const [, textContent] = match;
+    if (textContent && textContent.length > 10) {
+      parts.push(textContent);
+    }
+  }
+  const content = parts.join("\n\n");
+  return maxLength ? content.slice(0, maxLength) : content;
+}
+function extractLinksFromTree(tree) {
+  const links = [];
+  const linkPattern = /- link "([^"]+)"/g;
+  let match;
+  while ((match = linkPattern.exec(tree)) !== null && links.length < 20) {
+    const [, text] = match;
+    if (text && text.length > 2) {
+      links.push({ text, href: "" });
+    }
+  }
+  return links;
+}
+
+// src/browser-service.ts
+var BrowserService = class {
+  options;
+  isOpen = false;
+  constructor(options = {}) {
+    this.options = {
+      headless: true,
+      viewport: { width: 1280, height: 720 },
+      timeout: 3e4,
+      ...options
+    };
+  }
+  // ---------------------------------------------------------------------------
+  // Core Operations
+  // ---------------------------------------------------------------------------
+  /**
+   * Navigate to a URL and get page snapshot
+   */
+  async navigate(url, emit) {
+    emit?.({ action: "navigating", url, status: "loading" });
+    const openResult = await runCommand(`open "${url}"`, false);
+    if (!openResult.success) {
+      emit?.({
+        action: "navigating",
+        url,
+        status: "error",
+        error: openResult.error
+      });
+      throw new Error(`Failed to navigate: ${openResult.error}`);
+    }
+    this.isOpen = true;
+    emit?.({ action: "navigating", url, status: "complete" });
+    emit?.({
+      action: "extracting",
+      target: "page snapshot",
+      status: "loading"
+    });
+    const snapshotResult = await runCommand("snapshot -i");
+    if (!snapshotResult.success || !snapshotResult.data) {
+      emit?.({
+        action: "extracting",
+        target: "page snapshot",
+        status: "error"
+      });
+      throw new Error(`Failed to get snapshot: ${snapshotResult.error}`);
+    }
+    emit?.({
+      action: "extracting",
+      target: "page snapshot",
+      status: "complete"
+    });
+    const data = snapshotResult.data;
+    return {
+      url,
+      tree: data.data?.snapshot ?? String(snapshotResult.data),
+      refs: data.data?.refs ?? {}
+    };
+  }
+  /**
+   * Search using a search engine and extract results
+   */
+  async search(query, options = {}, emit) {
+    const { maxResults = 10, engine = "google" } = options;
+    const searchUrls = {
+      google: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+      duckduckgo: `https://duckduckgo.com/?q=${encodeURIComponent(query)}`,
+      bing: `https://www.bing.com/search?q=${encodeURIComponent(query)}`
+    };
+    const searchUrl = searchUrls[engine] ?? searchUrls.google;
+    emit?.({ action: "navigating", url: searchUrl, status: "loading" });
+    await runCommand(`open "${searchUrl}"`, false);
+    this.isOpen = true;
+    emit?.({ action: "navigating", url: searchUrl, status: "complete" });
+    emit?.({ action: "waiting", target: "search results", status: "loading" });
+    await runCommand("wait 2000", false);
+    emit?.({ action: "waiting", target: "search results", status: "complete" });
+    emit?.({
+      action: "extracting",
+      target: "search results",
+      status: "loading"
+    });
+    const snapshotResult = await runCommand("snapshot -i");
+    if (!snapshotResult.success) {
+      emit?.({
+        action: "extracting",
+        target: "search results",
+        status: "error",
+        error: snapshotResult.error
+      });
+      throw new Error(`Failed to get snapshot: ${snapshotResult.error}`);
+    }
+    const data = snapshotResult.data;
+    const tree = data.data?.snapshot ?? String(snapshotResult.data);
+    const refs = data.data?.refs ?? {};
+    const results = parseSearchResults(tree, refs, maxResults);
+    emit?.({
+      action: "extracting",
+      target: "search results",
+      status: "complete",
+      message: `Found ${results.length} results`
+    });
+    return {
+      query,
+      results,
+      totalResults: results.length
+    };
+  }
+  /**
+   * Scrape content from a specific URL
+   */
+  async scrape(url, options = {}, emit) {
+    emit?.({ action: "navigating", url, status: "loading" });
+    await runCommand(`open "${url}"`, false);
+    this.isOpen = true;
+    emit?.({ action: "navigating", url, status: "complete" });
+    await runCommand("wait 1500", false);
+    const titleResult = await runCommand("get title");
+    const title = titleResult.data?.data ?? "";
+    emit?.({ action: "extracting", target: "page content", status: "loading" });
+    const snapshotResult = await runCommand("snapshot");
+    if (!snapshotResult.success) {
+      emit?.({ action: "extracting", target: "page content", status: "error" });
+      throw new Error(`Failed to scrape: ${snapshotResult.error}`);
+    }
+    const data = snapshotResult.data;
+    const tree = data.data?.snapshot ?? String(snapshotResult.data);
+    const refs = data.data?.refs ?? {};
+    const content = extractContentFromTree(tree, options.maxContentLength);
+    const links = options.includeLinks ? extractLinksFromTree(tree) : void 0;
+    emit?.({
+      action: "extracting",
+      target: "page content",
+      status: "complete"
+    });
+    return {
+      url,
+      title,
+      content,
+      links
+    };
+  }
+  /**
+   * Close the browser
+   */
+  async close() {
+    if (this.isOpen) {
+      await runCommand("close", false);
+      this.isOpen = false;
+    }
+  }
+};
+var defaultInstance = null;
+function getBrowserService(options) {
+  if (!defaultInstance) {
+    defaultInstance = new BrowserService(options);
+  }
+  return defaultInstance;
+}
+async function closeBrowserService() {
+  if (defaultInstance) {
+    await defaultInstance.close();
+    defaultInstance = null;
+  }
+}
+
+// src/crawl4ai-service.ts
+var import_child_process3 = require("child_process");
+var import_path2 = __toESM(require("path"));
+
+// src/crawler/url-builder.ts
+function buildSearchUrl(query, engine, type = "web", useHtml = false) {
+  const encodedQuery = encodeURIComponent(query);
+  if (engine === "duckduckgo") {
+    return buildDuckDuckGoUrl(encodedQuery, type, useHtml);
+  }
+  if (engine === "bing") {
+    return buildBingUrl(encodedQuery, type);
+  }
+  return buildGoogleUrl(encodedQuery, type);
+}
+function buildDuckDuckGoUrl(encodedQuery, type, useHtml) {
+  if (useHtml && (type === "web" || type === "news")) {
+    return `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
+  }
+  switch (type) {
+    case "image":
+      return `https://duckduckgo.com/?q=${encodedQuery}&iax=images&ia=images`;
+    case "video":
+      return `https://duckduckgo.com/?q=${encodedQuery}&iax=videos&ia=videos`;
+    case "news":
+      return `https://duckduckgo.com/?q=${encodedQuery}&iar=news&ia=news`;
+    case "web":
+    default:
+      return `https://duckduckgo.com/?q=${encodedQuery}&ia=web`;
+  }
+}
+function buildBingUrl(encodedQuery, type) {
+  switch (type) {
+    case "image":
+      return `https://www.bing.com/images/search?q=${encodedQuery}`;
+    case "video":
+      return `https://www.bing.com/videos/search?q=${encodedQuery}`;
+    case "news":
+      return `https://www.bing.com/news/search?q=${encodedQuery}`;
+    case "web":
+    default:
+      return `https://www.bing.com/search?q=${encodedQuery}`;
+  }
+}
+function buildGoogleUrl(encodedQuery, type) {
+  const tbm = type === "image" ? "isch" : type === "video" ? "vid" : type === "news" ? "nws" : "";
+  return `https://www.google.com/search?q=${encodedQuery}${tbm ? `&tbm=${tbm}` : ""}`;
+}
+function normalizeSearchType(rawType) {
+  const normalized = rawType?.toLowerCase();
+  if (normalized === "image" || normalized === "imagecontent" || normalized === "images") {
+    return "image";
+  }
+  if (normalized === "video" || normalized === "videos") {
+    return "video";
+  }
+  if (normalized === "news") {
+    return "news";
+  }
+  return "web";
+}
+
+// src/crawler/js-scripts.ts
+function getWaitForSelector(type) {
+  switch (type) {
+    case "image":
+      return ".tile--img, .tile-wrap, .zci-wrap";
+    case "video":
+      return ".tile--vid, .module--carousel";
+    case "news":
+      return ".result--news, .result";
+    default:
+      return ".result";
+  }
+}
+function getMediaExtractionScript(type) {
+  if (type === "news" || type === "web") {
+    return getNewsOrWebScript(type);
+  }
+  if (type === "image") {
+    return getImageScript();
+  }
+  return getVideoScript();
+}
+function getNewsOrWebScript(type) {
+  return `
+    const results = [];
+    const selector = '${type === "news" ? ".result--news" : ".result"}';
+    const tiles = document.querySelectorAll(selector);
+    
+    tiles.forEach(tile => {
+       if (tile.classList.contains('result--more') || tile.classList.contains('result--ad')) return;
+
+       const titleEl = tile.querySelector('.result__title a');
+       const link = titleEl ? titleEl.href : null;
+       const title = titleEl ? titleEl.innerText : '';
+       const snippet = tile.querySelector('.result__snippet')?.innerText || '';
+       
+       let image = null;
+       const imgEl = tile.querySelector('.result__image img, .result__icon__img, .tile__media__img');
+       if (imgEl) {
+         const dataSrc = imgEl.dataset.src || imgEl.getAttribute('data-src');
+         const rawSrc = imgEl.src;
+         
+         if (dataSrc) {
+           image = dataSrc;
+         } else if (rawSrc && !rawSrc.startsWith('data:')) {
+           image = rawSrc;
+         }
+         
+         if (image && image.startsWith('//')) image = 'https:' + image;
+       }
+
+       const date = tile.querySelector('.result__timestamp')?.innerText || '';
+       const source = tile.querySelector('.result__url')?.innerText || '';
+       
+       let icon = null;
+       const iconEl = tile.querySelector('.result__icon__img');
+       if (iconEl && iconEl.src && !iconEl.src.startsWith('data:')) {
+          icon = iconEl.src;
+       }
+       
+       if (link && title) {
+         results.push({
+           title,
+           url: link,
+           snippet,
+           image,
+           date,
+           source,
+           favicon: icon,
+           type: '${type}'
+         });
+       }
+    });
+    
+    document.body.innerText = JSON.stringify(results);
+  `;
+}
+function getImageScript() {
+  return `
+    const results = [];
+    const tiles = document.querySelectorAll('.tile--img, .tile');
+    
+    tiles.forEach(tile => {
+      const link = tile.querySelector('a.tile--img__sub, a.tile__link');
+      const img = tile.querySelector('.tile--img__img, .tile__media__img, img.tile__image');
+      const title = tile.querySelector('.tile--img__title, .tile__title');
+      const dims = tile.querySelector('.tile--img__dims');
+      
+      if (!link || !img) return;
+      
+      const imgSrc = img.dataset.src || img.getAttribute('data-src') || img.src;
+      if (!imgSrc || imgSrc.startsWith('data:') || imgSrc.includes('placeholder')) return;
+
+      results.push({
+        title: title ? title.innerText : 'Image',
+        url: link.href,
+        snippet: title ? title.innerText : '', 
+        media: {
+           url: link.href,
+           thumbnail: imgSrc,
+           dimensions: dims ? { 
+               width: parseInt(dims.innerText.split('x')[0] || '0'), 
+               height: parseInt(dims.innerText.split('x')[1] || '0') 
+           } : undefined
+        },
+        type: 'image'
+      });
+    });
+    
+    document.body.innerText = JSON.stringify(results);
+  `;
+}
+function getVideoScript() {
+  return `
+    const tiles = document.querySelectorAll('.tile--vid');
+    const results = Array.from(tiles).map(tile => {
+      const link = tile.querySelector('.tile__media > a');
+      const title = tile.querySelector('.tile__title > a');
+      const img = tile.querySelector('.tile__media__img');
+      const duration = tile.querySelector('.tile__time');
+      const views = tile.querySelector('.tile__views');
+      const published = tile.querySelector('.tile__published');
+      
+      if (!link || !title) return null;
+      
+      const imgSrc = img ? (img.dataset.src || img.src) : null;
+      
+      return {
+        title: title.innerText,
+        url: link.href,
+        snippet: title.innerText,
+        media: {
+           url: link.href,
+           thumbnail: imgSrc,
+           duration: duration ? duration.innerText : undefined,
+           views: views ? views.innerText : undefined,
+           publishedAt: published ? published.innerText : undefined
+        },
+        type: 'video'
+      };
+    }).filter(Boolean);
+    
+    document.body.innerText = JSON.stringify(results);
+  `;
+}
+
+// src/crawler/result-parsers.ts
+function parseImageResults(pageContent, maxResults) {
+  const results = [];
+  const enhancedImages = pageContent.media?.images || [];
+  const legacyImages = pageContent.images || [];
+  for (const img of enhancedImages.slice(0, maxResults)) {
+    results.push({
+      title: img.alt || img.title || "Image",
+      url: img.src,
+      snippet: img.description || img.alt || "",
+      media: {
+        url: img.src,
+        thumbnail: img.src,
+        dimensions: img.width && img.height ? { width: img.width, height: img.height } : void 0
+      }
+    });
+  }
+  if (results.length === 0) {
+    for (const img of legacyImages.slice(0, maxResults)) {
+      results.push({
+        title: img.alt || "Image",
+        url: img.src,
+        snippet: img.alt || "",
+        media: {
+          url: img.src,
+          thumbnail: img.src
+        }
+      });
+    }
+  }
+  return results;
+}
+function parseVideoResults(pageContent, maxResults) {
+  const results = [];
+  const videos = pageContent.media?.videos || [];
+  for (const vid of videos.slice(0, maxResults)) {
+    results.push({
+      title: vid.title || "Video",
+      url: vid.src || vid.embedUrl || "",
+      snippet: vid.description || "",
+      media: {
+        url: vid.embedUrl || vid.src,
+        thumbnail: vid.thumbnail,
+        duration: vid.duration ? String(vid.duration) : void 0,
+        provider: vid.provider
+      }
+    });
+  }
+  return results;
+}
+function parseSearchResults2(markdown, maxResults) {
+  const results = [];
+  const seenUrls = /* @__PURE__ */ new Set();
+  const headingLinkRegex = /##\s*\[([^\]]+)\]\(([^)]+)\)/g;
+  let match;
+  while ((match = headingLinkRegex.exec(markdown)) !== null && results.length < maxResults) {
+    const title = match[1]?.trim() ?? "";
+    let rawUrl = match[2]?.trim() ?? "";
+    if (!title || !rawUrl) continue;
+    let actualUrl = rawUrl;
+    if (rawUrl.includes("duckduckgo.com/l/?uddg=") || rawUrl.includes("duckduckgo.com/l?")) {
+      try {
+        const urlObj = new URL(rawUrl);
+        const encodedUrl = urlObj.searchParams.get("uddg");
+        if (encodedUrl) {
+          actualUrl = decodeURIComponent(encodedUrl);
+        }
+      } catch {
+        continue;
+      }
+    }
+    if (seenUrls.has(actualUrl)) continue;
+    if (actualUrl.includes("duckduckgo.com") || actualUrl.includes("google.com/search") || actualUrl.includes("bing.com/search")) {
+      continue;
+    }
+    seenUrls.add(actualUrl);
+    const matchEnd = (match.index ?? 0) + match[0].length;
+    const snippetArea = markdown.slice(matchEnd, matchEnd + 500);
+    const nextHeading = snippetArea.indexOf("##");
+    const snippetText = nextHeading > 0 ? snippetArea.slice(0, nextHeading) : snippetArea.slice(0, 200);
+    const snippet = snippetText.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[#*_\[\]]/g, "").replace(/\s+/g, " ").trim().slice(0, 150);
+    results.push({
+      title,
+      url: actualUrl,
+      snippet: snippet || title
+    });
+  }
+  return results;
+}
+function parseJsonResults(content, maxResults) {
+  try {
+    const jsonContent = content.trim();
+    if (jsonContent.startsWith("[") && jsonContent.endsWith("]")) {
+      const rawData = JSON.parse(jsonContent);
+      return rawData.slice(0, maxResults);
+    }
+  } catch {
+  }
+  return null;
+}
+
+// src/crawler/python-resolver.ts
+var import_child_process2 = require("child_process");
+var import_path = __toESM(require("path"));
+var import_fs = __toESM(require("fs"));
+function findPythonPath(pythonDir) {
+  const venvPython = import_path.default.resolve(pythonDir, ".venv/bin/python");
+  if (import_fs.default.existsSync(venvPython)) {
+    return venvPython;
+  }
+  const venvPython3 = import_path.default.resolve(pythonDir, ".venv/bin/python3");
+  if (import_fs.default.existsSync(venvPython3)) {
+    return venvPython3;
+  }
+  try {
+    const systemPython = (0, import_child_process2.execSync)("which python3", { encoding: "utf8" }).trim();
+    if (systemPython && import_fs.default.existsSync(systemPython)) {
+      console.warn(
+        `[Crawl4AI] Virtual environment not found at ${pythonDir}/.venv, using system Python: ${systemPython}`
+      );
+      return systemPython;
+    }
+  } catch {
+  }
+  try {
+    const systemPython = (0, import_child_process2.execSync)("which python", { encoding: "utf8" }).trim();
+    if (systemPython && import_fs.default.existsSync(systemPython)) {
+      console.warn(
+        `[Crawl4AI] Virtual environment not found at ${pythonDir}/.venv, using system Python: ${systemPython}`
+      );
+      return systemPython;
+    }
+  } catch {
+  }
+  throw new Error(
+    `[Crawl4AI] Python not found. Please either:
+1. Create a virtual environment: cd ${pythonDir} && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+2. Or ensure python3 is available on your system PATH`
+  );
+}
+function findPythonDir() {
+  let root = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const lockPath = import_path.default.join(root, "pnpm-lock.yaml");
+    const pkgPath = import_path.default.join(root, "packages/web-search/python/crawler.py");
+    if (import_fs.default.existsSync(lockPath) || import_fs.default.existsSync(pkgPath)) {
+      break;
+    }
+    root = import_path.default.dirname(root);
+  }
+  const webSearchPackagePaths = [
+    import_path.default.resolve(root, "packages/web-search/python"),
+    import_path.default.resolve(process.cwd(), "node_modules/@onegenui/web-search/python")
+  ];
+  let pythonDir = webSearchPackagePaths[0];
+  for (const p of webSearchPackagePaths) {
+    try {
+      import_fs.default.accessSync(import_path.default.join(p, "crawler.py"));
+      pythonDir = p;
+      break;
+    } catch {
+      continue;
+    }
+  }
+  return pythonDir;
+}
+
+// src/crawl4ai-service.ts
+var Crawl4AIService = class {
+  pythonPath;
+  scriptPath;
+  constructor() {
+    const pythonDir = findPythonDir();
+    this.pythonPath = findPythonPath(pythonDir);
+    this.scriptPath = import_path2.default.resolve(pythonDir, "crawler.py");
+    console.log(`[Crawl4AI] Python dir: ${pythonDir}`);
+    console.log(`[Crawl4AI] Python path: ${this.pythonPath}`);
+    console.log(`[Crawl4AI] Script path: ${this.scriptPath}`);
+  }
+  /**
+   * Search the web using Crawl4AI by scraping search engine results pages.
+   * Supports web, image, video, and news search types.
+   * Uses parallel crawling for multiple engines/fallbacks.
+   */
+  async search(query, options = {}, emit) {
+    const { maxResults = 10, engine = "duckduckgo" } = options;
+    const searchType = normalizeSearchType(options.searchType);
+    const searchUrl = buildSearchUrl(query, engine, searchType);
+    if (emit) {
+      emit({
+        action: "searching",
+        target: query,
+        url: searchUrl,
+        status: "loading",
+        message: `Searching for "${query}" on ${engine} (${searchType})...`
+      });
+    }
+    let jsScript;
+    let waitForSelector;
+    const effectiveEngine = searchType === "image" || searchType === "video" ? "bing" : engine;
+    if (effectiveEngine === "duckduckgo" && searchType !== "web") {
+      jsScript = getMediaExtractionScript(searchType);
+      waitForSelector = getWaitForSelector(searchType);
+    }
+    const useHtmlVersion = searchType === "web" || searchType === "news";
+    const finalUrl = useHtmlVersion ? buildSearchUrl(query, effectiveEngine, searchType, true) : buildSearchUrl(query, effectiveEngine, searchType);
+    const scrapeResults = await this.scrape(
+      finalUrl,
+      {
+        js: jsScript,
+        waitFor: waitForSelector,
+        cache: false,
+        // Always fresh for search
+        noMedia: searchType === "web" || searchType === "news"
+        // Only extract media for image/video
+      },
+      emit
+    );
+    if (!scrapeResults || scrapeResults.length === 0) {
+      throw new Error("No search results page content");
+    }
+    const pageContent = scrapeResults[0];
+    let results = [];
+    if (searchType === "image") {
+      console.log(`[Crawl4AI] Image search debug:`, {
+        hasMedia: !!pageContent?.media,
+        imageCount: pageContent?.media?.images?.length || 0,
+        legacyImageCount: pageContent?.images?.length || 0,
+        contentLength: pageContent?.content?.length || 0
+      });
+    }
+    if (searchType === "image" && (pageContent?.media?.images?.length || pageContent?.images?.length)) {
+      results = parseImageResults(pageContent, maxResults);
+    } else if (searchType === "video" && pageContent?.media?.videos) {
+      results = parseVideoResults(pageContent, maxResults);
+    } else if (jsScript && pageContent?.content) {
+      const jsonResults = parseJsonResults(pageContent.content, maxResults);
+      results = jsonResults || parseSearchResults2(pageContent.content || "", maxResults);
+    } else {
+      results = parseSearchResults2(pageContent?.content || "", maxResults);
+    }
+    if (emit) {
+      emit({
+        action: "searching",
+        target: query,
+        url: finalUrl,
+        status: "complete",
+        message: `Found ${results.length} results`
+      });
+    }
+    return {
+      query,
+      results,
+      totalResults: results.length
+    };
+  }
+  /**
+   * Search multiple queries or sources in parallel
+   */
+  async searchParallel(queries, emit) {
+    const urls = queries.map(
+      (q) => buildSearchUrl(
+        q.query,
+        q.engine || "duckduckgo",
+        normalizeSearchType(q.searchType),
+        true
+        // Use HTML version for reliability
+      )
+    );
+    if (emit) {
+      emit({
+        action: "searching",
+        target: `${queries.length} parallel searches`,
+        status: "loading",
+        message: `Starting parallel search for ${queries.length} queries...`
+      });
+    }
+    const scrapeResults = await this.scrape(
+      urls,
+      { cache: false, noMedia: true },
+      emit
+    );
+    const allResults = [];
+    for (let i = 0; i < queries.length; i++) {
+      const q = queries[i];
+      const content = scrapeResults[i]?.content || "";
+      const results = parseSearchResults2(content, 10);
+      allResults.push({
+        query: q.query,
+        results,
+        totalResults: results.length
+      });
+      if (emit) {
+        emit({
+          action: "searching",
+          target: q.query,
+          status: "complete",
+          message: `Found ${results.length} results for "${q.query}"`
+        });
+      }
+    }
+    return allResults;
+  }
+  /**
+   * Scrape one or more URLs in parallel with full media extraction
+   */
+  async scrape(urls, options = {}, emit) {
+    const urlList = Array.isArray(urls) ? urls : [urls];
+    const { includeImages = true, cache = true, noMedia = false } = options;
+    const args = ["--urls", JSON.stringify(urlList)];
+    if (options.js) {
+      args.push("--js", options.js);
+    }
+    if (options.waitFor) {
+      args.push("--wait-for", options.waitFor);
+    }
+    if (options.cache === false) {
+      args.push("--no-cache");
+    }
+    if (noMedia || !includeImages) {
+      args.push("--no-media");
+    }
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        try {
+          pythonProcess.kill();
+        } catch {
+        }
+        reject(new Error("Crawl4AI timeout after 5 minutes"));
+      }, 3e5);
+      const pythonProcess = (0, import_child_process3.spawn)(this.pythonPath, [this.scriptPath, ...args]);
+      let errorData = "";
+      let resultReceived = false;
+      let stdoutBuffer = "";
+      const processLine = (line) => {
+        if (!line.trim()) return;
+        try {
+          const event = JSON.parse(line);
+          if (event.type === "progress") {
+            if (emit) {
+              emit({
+                action: event.action,
+                target: event.target,
+                url: event.url,
+                status: event.status,
+                message: event.message
+              });
+            }
+          } else if (event.type === "result") {
+            resultReceived = true;
+            clearTimeout(timeout);
+            const results = this.transformCrawlResults(event.results);
+            resolve(results);
+          } else if (event.type === "error") {
+            clearTimeout(timeout);
+            reject(new Error(event.message));
+          } else {
+            console.log("[Crawl4AI Python Event]", event);
+          }
+        } catch {
+          if (!line.includes("[FETCH]") && !line.includes("[SCRAPE]") && !line.includes("[COMPLETE]") && !line.includes("| ")) {
+            console.log("[Crawl4AI Python Stdout]", line.slice(0, 200));
+          }
+        }
+      };
+      pythonProcess.stdout.on("data", (data) => {
+        stdoutBuffer += data.toString();
+        const lines = stdoutBuffer.split("\n");
+        stdoutBuffer = lines.pop() || "";
+        for (const line of lines) {
+          processLine(line);
+        }
+      });
+      pythonProcess.stderr.on("data", (data) => {
+        const msg = data.toString();
+        errorData += msg;
+        console.error("[Crawl4AI Python Stderr]", msg);
+      });
+      pythonProcess.on("close", (code) => {
+        if (stdoutBuffer.trim()) {
+          processLine(stdoutBuffer);
+        }
+        clearTimeout(timeout);
+        if (code !== 0 && !resultReceived) {
+          reject(new Error(`Crawl4AI failed with code ${code}: ${errorData}`));
+        }
+      });
+      pythonProcess.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(new Error(`Failed to spawn Crawl4AI process: ${err.message}`));
+      });
+    });
+  }
+  /**
+   * Transform Python crawler results to TypeScript ScrapeResult format.
+   */
+  transformCrawlResults(results) {
+    return results.map((r) => {
+      const result = {
+        url: r.url,
+        title: r.title || "",
+        content: r.content || "",
+        links: r.links,
+        metadata: r.metadata
+      };
+      if (r.images || r.videos || r.audio) {
+        result.media = {
+          images: r.images,
+          videos: r.videos,
+          audio: r.audio
+        };
+        if (r.images && r.images.length > 0) {
+          result.images = r.images.map((img) => ({
+            src: img.src,
+            alt: img.alt || ""
+          }));
+        }
+      }
+      return result;
+    });
+  }
+};
+
+// src/logger.ts
+var import_fs2 = __toESM(require("fs"));
+var import_path3 = __toESM(require("path"));
+var LOG_FILE = import_path3.default.resolve(process.cwd(), "web.log");
+function logDebug(context, message, data) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const entry = `[${timestamp}] [${context}] ${message}${data ? ` | ${JSON.stringify(data)}` : ""}`;
+  console.log(`\u{1F50D} ${entry}`);
+  try {
+    import_fs2.default.appendFileSync(LOG_FILE, entry + "\n");
+  } catch (e) {
+  }
+}
+function clearLog() {
+  try {
+    import_fs2.default.writeFileSync(
+      LOG_FILE,
+      `--- Web Search Log Started: ${(/* @__PURE__ */ new Date()).toISOString()} ---
+`
+    );
+  } catch (e) {
+  }
+}
+
+// src/tools.ts
+var import_zod2 = require("zod");
+var import_mcp = require("@onegenui/mcp");
+
+// src/use-cases/web-search.use-case.ts
+var DEFAULT_RETRY_CONFIG = {
+  maxRetries: 3,
+  initialDelay: 1e3,
+  backoffMultiplier: 2,
+  maxDelay: 1e4
+};
+var WebSearchUseCase = class {
+  searchAdapters;
+  scraperAdapters;
+  retryConfig;
+  // Circuit breaker state
+  circuitState = /* @__PURE__ */ new Map();
+  circuitThreshold = 5;
+  circuitResetTime = 6e4;
+  // 1 minute
+  constructor(searchAdapters, scraperAdapters, retryConfig = {}) {
+    if (searchAdapters.length === 0) {
+      throw new Error("At least one search adapter is required");
+    }
+    if (scraperAdapters.length === 0) {
+      throw new Error("At least one scraper adapter is required");
+    }
+    this.searchAdapters = searchAdapters;
+    this.scraperAdapters = scraperAdapters;
+    this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
+  }
+  /**
+   * Search with fallback chain
+   */
+  async search(query, options = {}) {
+    const { onProgress } = options;
+    let lastError = null;
+    for (const adapter of this.searchAdapters) {
+      const name = adapter.getName();
+      if (this.isCircuitOpen(name)) {
+        onProgress?.({
+          phase: "starting",
+          message: `Skipping ${name} (circuit open)`
+        });
+        continue;
+      }
+      try {
+        const response = await this.executeWithRetry(
+          () => adapter.search(query, {
+            ...options,
+            onProgress: (progress) => {
+              onProgress?.({
+                ...progress,
+                message: `[${name}] ${progress.message}`
+              });
+            }
+          }),
+          name
+        );
+        this.resetCircuit(name);
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.recordFailure(name);
+        onProgress?.({
+          phase: "error",
+          message: `${name} failed: ${lastError.message}, trying fallback...`
+        });
+      }
+    }
+    throw lastError || new Error("All search adapters failed");
+  }
+  /**
+   * Scrape single URL with fallback chain
+   */
+  async scrape(url, options = {}) {
+    const { onProgress } = options;
+    let lastError = null;
+    for (const adapter of this.scraperAdapters) {
+      const name = adapter.getName();
+      if (this.isCircuitOpen(name)) {
+        onProgress?.({
+          phase: "starting",
+          message: `Skipping ${name} (circuit open)`,
+          url
+        });
+        continue;
+      }
+      try {
+        const response = await this.executeWithRetry(
+          () => adapter.scrape(url, {
+            ...options,
+            onProgress: (progress) => {
+              onProgress?.({
+                ...progress,
+                message: `[${name}] ${progress.message}`
+              });
+            }
+          }),
+          name
+        );
+        this.resetCircuit(name);
+        return response;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.recordFailure(name);
+        onProgress?.({
+          phase: "error",
+          message: `${name} failed: ${lastError.message}, trying fallback...`,
+          url
+        });
+      }
+    }
+    throw lastError || new Error("All scraper adapters failed");
+  }
+  /**
+   * Scrape multiple URLs with fallback and partial results
+   */
+  async scrapeMany(urls, options = {}) {
+    const { onProgress } = options;
+    const results = /* @__PURE__ */ new Map();
+    const failed = /* @__PURE__ */ new Map();
+    const startTime = Date.now();
+    const primaryAdapter = this.scraperAdapters.find(
+      (a) => !this.isCircuitOpen(a.getName())
+    );
+    if (primaryAdapter) {
+      const name = primaryAdapter.getName();
+      try {
+        const batchResult = await primaryAdapter.scrapeMany(urls, {
+          ...options,
+          onProgress: (progress) => {
+            onProgress?.({
+              ...progress,
+              message: `[${name}] ${progress.message}`
+            });
+          }
+        });
+        for (const [url, response] of batchResult.results) {
+          results.set(url, response);
+        }
+        const failedUrls = Array.from(batchResult.failed.keys());
+        if (failedUrls.length > 0) {
+          onProgress?.({
+            phase: "starting",
+            message: `Retrying ${failedUrls.length} failed URLs with fallback...`,
+            url: failedUrls[0]
+          });
+          for (const url of failedUrls) {
+            try {
+              const response = await this.scrape(url, options);
+              results.set(url, response);
+            } catch (error) {
+              failed.set(
+                url,
+                error instanceof Error ? error : new Error(String(error))
+              );
+            }
+          }
+        }
+        return { results, failed, totalDuration: Date.now() - startTime };
+      } catch (error) {
+        onProgress?.({
+          phase: "error",
+          message: `Batch scrape failed: ${error instanceof Error ? error.message : String(error)}`,
+          url: urls[0]
+        });
+      }
+    }
+    for (const url of urls) {
+      try {
+        const response = await this.scrape(url, options);
+        results.set(url, response);
+      } catch (error) {
+        failed.set(
+          url,
+          error instanceof Error ? error : new Error(String(error))
+        );
+      }
+    }
+    return { results, failed, totalDuration: Date.now() - startTime };
+  }
+  /**
+   * Check health of all adapters
+   */
+  async healthCheck() {
+    const checkAdapter = async (adapter) => {
+      const name = adapter.getName();
+      const start = Date.now();
+      try {
+        const available = await adapter.isAvailable();
+        return {
+          name,
+          available,
+          latency: Date.now() - start
+        };
+      } catch (error) {
+        return {
+          name,
+          available: false,
+          latency: Date.now() - start,
+          error: error instanceof Error ? error.message : String(error)
+        };
+      }
+    };
+    const [searchHealth, scraperHealth] = await Promise.all([
+      Promise.all(this.searchAdapters.map(checkAdapter)),
+      Promise.all(this.scraperAdapters.map(checkAdapter))
+    ]);
+    return {
+      search: searchHealth,
+      scraper: scraperHealth
+    };
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Private Methods
+  // ─────────────────────────────────────────────────────────────────────────────
+  /**
+   * Execute with exponential backoff retry
+   */
+  async executeWithRetry(fn, adapterName) {
+    const { maxRetries, initialDelay, backoffMultiplier, maxDelay } = this.retryConfig;
+    let lastError = null;
+    let delay = initialDelay;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        if (attempt < maxRetries) {
+          console.log(
+            `[WebSearchUseCase] ${adapterName} attempt ${attempt + 1} failed, retrying in ${delay}ms...`
+          );
+          await this.sleep(delay);
+          delay = Math.min(delay * backoffMultiplier, maxDelay);
+        }
+      }
+    }
+    throw lastError || new Error(`${adapterName} failed after ${maxRetries} retries`);
+  }
+  /**
+   * Check if circuit is open for an adapter
+   */
+  isCircuitOpen(name) {
+    const state = this.circuitState.get(name);
+    if (!state || !state.open) return false;
+    if (Date.now() - state.lastFailure > this.circuitResetTime) {
+      state.open = false;
+      state.failures = 0;
+      return false;
+    }
+    return true;
+  }
+  /**
+   * Record a failure for circuit breaker
+   */
+  recordFailure(name) {
+    const state = this.circuitState.get(name) || {
+      failures: 0,
+      lastFailure: 0,
+      open: false
+    };
+    state.failures++;
+    state.lastFailure = Date.now();
+    if (state.failures >= this.circuitThreshold) {
+      state.open = true;
+      console.warn(
+        `[WebSearchUseCase] Circuit opened for ${name} after ${state.failures} failures`
+      );
+    }
+    this.circuitState.set(name, state);
+  }
+  /**
+   * Reset circuit for an adapter
+   */
+  resetCircuit(name) {
+    this.circuitState.delete(name);
+  }
+  /**
+   * Sleep helper
+   */
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+};
+
+// src/adapters/crawl4ai-search.adapter.ts
+var LRUCache = class {
+  cache = /* @__PURE__ */ new Map();
+  maxSize;
+  ttl;
+  constructor(maxSize = 100, ttlMs = 5 * 60 * 1e3) {
+    this.maxSize = maxSize;
+    this.ttl = ttlMs;
+  }
+  get(key) {
+    const entry = this.cache.get(key);
+    if (!entry) return void 0;
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return void 0;
+    }
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.data;
+  }
+  set(key, data) {
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+  clear() {
+    this.cache.clear();
+  }
+};
+var Crawl4AISearchAdapter = class {
+  service;
+  cache;
+  available = null;
+  constructor(cacheSize = 100, cacheTTL = 5 * 60 * 1e3) {
+    this.service = new Crawl4AIService();
+    this.cache = new LRUCache(cacheSize, cacheTTL);
+  }
+  async search(query, options = {}) {
+    const {
+      maxResults,
+      engine,
+      searchType,
+      cache: useCache = true,
+      timeout = 6e4,
+      onProgress,
+      signal
+    } = options;
+    const startTime = Date.now();
+    const cacheKey = `${query}|${engine || "duckduckgo"}|${searchType || "web"}|${maxResults || 10}`;
+    if (useCache) {
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        onProgress?.({
+          phase: "complete",
+          message: "Results from cache",
+          results: cached.results.length
+        });
+        return {
+          results: cached,
+          cached: true,
+          duration: Date.now() - startTime,
+          source: this.getName()
+        };
+      }
+    }
+    if (signal?.aborted) {
+      throw new Error("Search aborted");
+    }
+    onProgress?.({ phase: "starting", message: `Searching for "${query}"...` });
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        const id = setTimeout(
+          () => reject(new Error("Search timeout")),
+          timeout
+        );
+        signal?.addEventListener("abort", () => {
+          clearTimeout(id);
+          reject(new Error("Search aborted"));
+        });
+      });
+      const searchPromise = this.service.search(
+        query,
+        { maxResults, engine, searchType },
+        onProgress ? (action) => {
+          onProgress({
+            phase: action.status === "complete" ? "complete" : action.status === "error" ? "error" : "searching",
+            message: action.message || ""
+          });
+        } : void 0
+      );
+      const results = await Promise.race([searchPromise, timeoutPromise]);
+      const duration = Date.now() - startTime;
+      if (useCache && results.results.length > 0) {
+        this.cache.set(cacheKey, results);
+      }
+      onProgress?.({
+        phase: "complete",
+        message: `Found ${results.results.length} results`,
+        results: results.results.length
+      });
+      return {
+        results,
+        cached: false,
+        duration,
+        source: this.getName()
+      };
+    } catch (error) {
+      onProgress?.({
+        phase: "error",
+        message: error instanceof Error ? error.message : "Search failed"
+      });
+      throw error;
+    }
+  }
+  async isAvailable() {
+    if (this.available !== null) return this.available;
+    try {
+      const result = await this.service.search("test", {
+        maxResults: 1,
+        engine: "duckduckgo"
+      });
+      this.available = result.results.length > 0;
+    } catch {
+      this.available = false;
+    }
+    return this.available;
+  }
+  getName() {
+    return "crawl4ai";
+  }
+  /**
+   * Clear the search cache
+   */
+  clearCache() {
+    this.cache.clear();
+  }
+};
+
+// src/adapters/crawl4ai-scraper.adapter.ts
+var LRUCache2 = class {
+  cache = /* @__PURE__ */ new Map();
+  maxSize;
+  ttl;
+  constructor(maxSize = 200, ttlMs = 30 * 60 * 1e3) {
+    this.maxSize = maxSize;
+    this.ttl = ttlMs;
+  }
+  get(key) {
+    const entry = this.cache.get(key);
+    if (!entry) return void 0;
+    if (Date.now() - entry.timestamp > this.ttl) {
+      this.cache.delete(key);
+      return void 0;
+    }
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.data;
+  }
+  set(key, data) {
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+  clear() {
+    this.cache.clear();
+  }
+};
+var Crawl4AIScraperAdapter = class {
+  service;
+  cache;
+  available = null;
+  constructor(cacheSize = 200, cacheTTL = 30 * 60 * 1e3) {
+    this.service = new Crawl4AIService();
+    this.cache = new LRUCache2(cacheSize, cacheTTL);
+  }
+  async scrape(url, options = {}) {
+    const {
+      includeImages,
+      includeLinks,
+      maxContentLength,
+      cache: useCache = true,
+      timeout = 3e4,
+      onProgress,
+      signal,
+      jsCode,
+      waitFor,
+      extractMedia = true
+    } = options;
+    const startTime = Date.now();
+    const cacheKey = `${url}|${extractMedia}|${jsCode || ""}|${waitFor || ""}`;
+    if (useCache) {
+      const cached = this.cache.get(cacheKey);
+      if (cached) {
+        onProgress?.({
+          phase: "complete",
+          message: "Results from cache",
+          url
+        });
+        return {
+          result: cached,
+          cached: true,
+          duration: Date.now() - startTime,
+          source: this.getName()
+        };
+      }
+    }
+    if (signal?.aborted) {
+      throw new Error("Scrape aborted");
+    }
+    onProgress?.({ phase: "starting", message: `Scraping ${url}...`, url });
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        const id = setTimeout(
+          () => reject(new Error("Scrape timeout")),
+          timeout
+        );
+        signal?.addEventListener("abort", () => {
+          clearTimeout(id);
+          reject(new Error("Scrape aborted"));
+        });
+      });
+      const crawl4aiOptions = {
+        includeImages,
+        includeLinks,
+        maxContentLength,
+        js: jsCode,
+        waitFor,
+        cache: false,
+        // We handle caching ourselves
+        noMedia: !extractMedia
+      };
+      const scrapePromise = this.service.scrape(
+        url,
+        crawl4aiOptions,
+        onProgress ? (action) => {
+          onProgress({
+            phase: action.status === "complete" ? "complete" : action.status === "error" ? "error" : action.action === "navigating" ? "navigating" : "extracting",
+            message: action.message || "",
+            url: action.url || url
+          });
+        } : void 0
+      );
+      const results = await Promise.race([scrapePromise, timeoutPromise]);
+      const duration = Date.now() - startTime;
+      if (!results || results.length === 0) {
+        throw new Error("No content extracted");
+      }
+      const result = results[0];
+      if (useCache) {
+        this.cache.set(cacheKey, result);
+      }
+      onProgress?.({
+        phase: "complete",
+        message: `Scraped ${result.content?.length || 0} characters`,
+        url
+      });
+      return {
+        result,
+        cached: false,
+        duration,
+        source: this.getName()
+      };
+    } catch (error) {
+      onProgress?.({
+        phase: "error",
+        message: error instanceof Error ? error.message : "Scrape failed",
+        url
+      });
+      throw error;
+    }
+  }
+  async scrapeMany(urls, options = {}) {
+    const {
+      includeImages,
+      includeLinks,
+      maxContentLength,
+      cache: useCache = true,
+      timeout = 12e4,
+      onProgress,
+      signal,
+      jsCode,
+      waitFor,
+      extractMedia = true
+    } = options;
+    const startTime = Date.now();
+    const results = /* @__PURE__ */ new Map();
+    const failed = /* @__PURE__ */ new Map();
+    const urlsToScrape = [];
+    for (const url of urls) {
+      const cacheKey = `${url}|${extractMedia}|${jsCode || ""}|${waitFor || ""}`;
+      if (useCache) {
+        const cached = this.cache.get(cacheKey);
+        if (cached) {
+          results.set(url, {
+            result: cached,
+            cached: true,
+            duration: 0,
+            source: this.getName()
+          });
+          continue;
+        }
+      }
+      urlsToScrape.push(url);
+    }
+    if (signal?.aborted) {
+      throw new Error("Batch scrape aborted");
+    }
+    if (urlsToScrape.length === 0) {
+      return {
+        results,
+        failed,
+        totalDuration: Date.now() - startTime
+      };
+    }
+    onProgress?.({
+      phase: "starting",
+      message: `Batch scraping ${urlsToScrape.length} URLs...`,
+      url: urlsToScrape[0]
+    });
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        const id = setTimeout(
+          () => reject(new Error("Batch scrape timeout")),
+          timeout
+        );
+        signal?.addEventListener("abort", () => {
+          clearTimeout(id);
+          reject(new Error("Batch scrape aborted"));
+        });
+      });
+      const crawl4aiOptions = {
+        includeImages,
+        includeLinks,
+        maxContentLength,
+        js: jsCode,
+        waitFor,
+        cache: false,
+        // We handle caching ourselves
+        noMedia: !extractMedia
+      };
+      const scrapePromise = this.service.scrape(
+        urlsToScrape,
+        crawl4aiOptions,
+        onProgress ? (action) => {
+          onProgress({
+            phase: action.status === "complete" ? "complete" : action.status === "error" ? "error" : action.action === "navigating" ? "navigating" : "extracting",
+            message: action.message || "",
+            url: action.url || urlsToScrape[0]
+          });
+        } : void 0
+      );
+      const scrapeResults = await Promise.race([scrapePromise, timeoutPromise]);
+      const scrapeTime = Date.now() - startTime;
+      for (let i = 0; i < urlsToScrape.length; i++) {
+        const url = urlsToScrape[i];
+        const result = scrapeResults[i];
+        if (result && result.content) {
+          const cacheKey = `${url}|${extractMedia}|${jsCode || ""}|${waitFor || ""}`;
+          if (useCache) {
+            this.cache.set(cacheKey, result);
+          }
+          results.set(url, {
+            result,
+            cached: false,
+            duration: scrapeTime / urlsToScrape.length,
+            // Estimate per-URL time
+            source: this.getName()
+          });
+        } else {
+          failed.set(url, new Error("No content extracted"));
+        }
+      }
+      onProgress?.({
+        phase: "complete",
+        message: `Batch complete: ${results.size} success, ${failed.size} failed`,
+        url: urlsToScrape[0]
+      });
+      return {
+        results,
+        failed,
+        totalDuration: Date.now() - startTime
+      };
+    } catch (error) {
+      for (const url of urlsToScrape) {
+        if (!results.has(url)) {
+          failed.set(
+            url,
+            error instanceof Error ? error : new Error("Batch scrape failed")
+          );
+        }
+      }
+      onProgress?.({
+        phase: "error",
+        message: error instanceof Error ? error.message : "Batch scrape failed",
+        url: urlsToScrape[0]
+      });
+      return {
+        results,
+        failed,
+        totalDuration: Date.now() - startTime
+      };
+    }
+  }
+  async isAvailable() {
+    if (this.available !== null) return this.available;
+    try {
+      const result = await this.service.scrape("https://example.com", {
+        noMedia: true
+      });
+      this.available = result.length > 0 && !!result[0]?.content;
+    } catch {
+      this.available = false;
+    }
+    return this.available;
+  }
+  getName() {
+    return "crawl4ai";
+  }
+  /**
+   * Clear the scrape cache
+   */
+  clearCache() {
+    this.cache.clear();
+  }
+};
+
+// src/adapters/browser-service.adapter.ts
+var BrowserServiceSearchAdapter = class {
+  service;
+  available = null;
+  constructor() {
+    this.service = new BrowserService();
+  }
+  async search(query, options = {}) {
+    const { maxResults, engine, timeout = 6e4, onProgress, signal } = options;
+    const startTime = Date.now();
+    if (signal?.aborted) {
+      throw new Error("Search aborted");
+    }
+    onProgress?.({
+      phase: "starting",
+      message: `Searching for "${query}" via browser...`
+    });
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        const id = setTimeout(
+          () => reject(new Error("Search timeout")),
+          timeout
+        );
+        signal?.addEventListener("abort", () => {
+          clearTimeout(id);
+          reject(new Error("Search aborted"));
+        });
+      });
+      const emit = onProgress ? (action) => {
+        onProgress({
+          phase: action.status === "complete" ? "complete" : action.status === "error" ? "error" : "searching",
+          message: action.message || action.target || ""
+        });
+      } : void 0;
+      const searchPromise = this.service.search(
+        query,
+        { maxResults, engine },
+        emit
+      );
+      const results = await Promise.race([searchPromise, timeoutPromise]);
+      const duration = Date.now() - startTime;
+      onProgress?.({
+        phase: "complete",
+        message: `Found ${results.results.length} results`,
+        results: results.results.length
+      });
+      return {
+        results,
+        cached: false,
+        duration,
+        source: this.getName()
+      };
+    } catch (error) {
+      onProgress?.({
+        phase: "error",
+        message: error instanceof Error ? error.message : "Search failed"
+      });
+      throw error;
+    }
+  }
+  async isAvailable() {
+    if (this.available !== null) return this.available;
+    try {
+      const result = await this.service.search("test", { maxResults: 1 });
+      this.available = result.results.length >= 0;
+    } catch {
+      this.available = false;
+    }
+    return this.available;
+  }
+  getName() {
+    return "browser-service";
+  }
+};
+var BrowserServiceScraperAdapter = class {
+  service;
+  available = null;
+  constructor() {
+    this.service = new BrowserService();
+  }
+  async scrape(url, options = {}) {
+    const {
+      includeImages,
+      includeLinks,
+      timeout = 3e4,
+      onProgress,
+      signal
+    } = options;
+    const startTime = Date.now();
+    if (signal?.aborted) {
+      throw new Error("Scrape aborted");
+    }
+    onProgress?.({
+      phase: "starting",
+      message: `Scraping ${url} via browser...`,
+      url
+    });
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        const id = setTimeout(
+          () => reject(new Error("Scrape timeout")),
+          timeout
+        );
+        signal?.addEventListener("abort", () => {
+          clearTimeout(id);
+          reject(new Error("Scrape aborted"));
+        });
+      });
+      const emit = onProgress ? (action) => {
+        onProgress({
+          phase: action.status === "complete" ? "complete" : action.status === "error" ? "error" : action.action === "navigating" ? "navigating" : "extracting",
+          message: action.message || action.target || "",
+          url: action.url || url
+        });
+      } : void 0;
+      const scrapePromise = this.service.scrape(
+        url,
+        { includeImages, includeLinks },
+        emit
+      );
+      const result = await Promise.race([scrapePromise, timeoutPromise]);
+      const duration = Date.now() - startTime;
+      onProgress?.({
+        phase: "complete",
+        message: `Scraped ${result.content?.length || 0} characters`,
+        url
+      });
+      return {
+        result,
+        cached: false,
+        duration,
+        source: this.getName()
+      };
+    } catch (error) {
+      onProgress?.({
+        phase: "error",
+        message: error instanceof Error ? error.message : "Scrape failed",
+        url
+      });
+      throw error;
+    }
+  }
+  async scrapeMany(urls, options = {}) {
+    const startTime = Date.now();
+    const results = /* @__PURE__ */ new Map();
+    const failed = /* @__PURE__ */ new Map();
+    for (const url of urls) {
+      try {
+        const response = await this.scrape(url, options);
+        results.set(url, response);
+      } catch (error) {
+        failed.set(
+          url,
+          error instanceof Error ? error : new Error("Scrape failed")
+        );
+      }
+    }
+    return {
+      results,
+      failed,
+      totalDuration: Date.now() - startTime
+    };
+  }
+  async isAvailable() {
+    if (this.available !== null) return this.available;
+    try {
+      const result = await this.service.scrape("https://example.com");
+      this.available = !!result.content;
+    } catch {
+      this.available = false;
+    }
+    return this.available;
+  }
+  getName() {
+    return "browser-service";
+  }
+};
+
+// src/tools.ts
+var DEFAULT_SEARCH_TIMEOUT = 6e4;
+var DEFAULT_SCRAPE_TIMEOUT = 3e4;
+var isAgenticBrowserFallbackEnabled = () => {
+  const enabled = process.env.ENABLE_AGENTIC_BROWSER_FALLBACK === "true";
+  logDebug("CONFIG", `Agentic Browser Fallback Enabled: ${enabled}`);
+  return enabled;
+};
+var webSearchUseCaseInstance = null;
+function getWebSearchUseCase() {
+  if (webSearchUseCaseInstance) return webSearchUseCaseInstance;
+  const searchAdapters = [new Crawl4AISearchAdapter()];
+  const scraperAdapters = [new Crawl4AIScraperAdapter()];
+  if (isAgenticBrowserFallbackEnabled()) {
+    searchAdapters.push(new BrowserServiceSearchAdapter());
+    scraperAdapters.push(new BrowserServiceScraperAdapter());
+  }
+  webSearchUseCaseInstance = new WebSearchUseCase(
+    searchAdapters,
+    scraperAdapters,
+    {
+      maxRetries: 2,
+      initialDelay: 1e3,
+      backoffMultiplier: 2,
+      maxDelay: 5e3
+    }
+  );
+  return webSearchUseCaseInstance;
+}
+function createProgressLogger(toolName) {
+  return (progress) => {
+    logDebug(toolName, progress.message, {
+      phase: progress.phase,
+      ..."results" in progress && progress.results !== void 0 ? { results: progress.results } : {}
+    });
+  };
+}
+var webSearchTool = (0, import_mcp.defineMcpTool)({
+  name: "web-search",
+  description: "Search the web using a search engine. Returns a list of search results with titles, URLs, and snippets. Use this when the user asks to search for information, find websites, or look up topics on the internet.",
+  parameters: import_zod2.z.object({
+    query: import_zod2.z.string().describe("The search query"),
+    maxResults: import_zod2.z.number().min(1).max(20).optional().describe("Maximum number of results to return (default: 10)"),
+    engine: import_zod2.z.enum(["google", "duckduckgo", "bing"]).optional().describe("Search engine to use (default: duckduckgo)"),
+    type: import_zod2.z.enum(["web", "image", "video", "news"]).optional().describe("Type of search to perform (default: web)"),
+    timeout: import_zod2.z.number().min(5e3).max(3e5).optional().describe("Timeout in milliseconds (default: 60000)")
+  }),
+  domain: "web",
+  tags: ["search", "web", "browse", "find", "lookup"],
+  async execute({
+    query,
+    maxResults,
+    engine,
+    type,
+    timeout
+  }) {
+    logDebug("WEB-SEARCH", `Starting search`, {
+      query,
+      maxResults,
+      engine,
+      type
+    });
+    const useCase = getWebSearchUseCase();
+    const response = await useCase.search(query, {
+      maxResults: maxResults ?? 10,
+      engine,
+      searchType: type,
+      timeout: timeout ?? DEFAULT_SEARCH_TIMEOUT,
+      cache: true,
+      onProgress: createProgressLogger("WEB-SEARCH")
+    });
+    logDebug("WEB-SEARCH", `Search complete`, {
+      resultCount: response.results.results.length,
+      cached: response.cached,
+      duration: response.duration,
+      source: response.source
+    });
+    return response.results;
+  }
+});
+var webScrapeTool = (0, import_mcp.defineMcpTool)({
+  name: "web-scrape",
+  description: "Scrape and extract content from a specific webpage URL. Returns the page title, main content, and optionally links and images. Use this when the user wants to read or analyze content from a specific website.",
+  parameters: import_zod2.z.object({
+    url: import_zod2.z.string().url().describe("The URL to scrape"),
+    includeLinks: import_zod2.z.boolean().optional().describe("Whether to extract links from the page"),
+    includeImages: import_zod2.z.boolean().optional().describe("Whether to extract images from the page"),
+    maxContentLength: import_zod2.z.number().optional().describe("Maximum characters of content to return"),
+    timeout: import_zod2.z.number().min(5e3).max(3e5).optional().describe("Timeout in milliseconds (default: 30000)")
+  }),
+  domain: "web",
+  tags: ["scrape", "extract", "content", "webpage", "read"],
+  async execute({
+    url,
+    includeLinks,
+    includeImages,
+    maxContentLength,
+    timeout
+  }) {
+    logDebug("WEB-SCRAPE", `Starting scrape`, { url });
+    const useCase = getWebSearchUseCase();
+    const response = await useCase.scrape(url, {
+      includeLinks,
+      includeImages,
+      maxContentLength,
+      timeout: timeout ?? DEFAULT_SCRAPE_TIMEOUT,
+      cache: true,
+      onProgress: createProgressLogger("WEB-SCRAPE")
+    });
+    logDebug("WEB-SCRAPE", `Scrape complete`, {
+      url: response.result.url,
+      contentLength: response.result.content?.length ?? 0,
+      cached: response.cached,
+      duration: response.duration,
+      source: response.source
+    });
+    return response.result;
+  }
+});
+var webBatchScrapeTool = (0, import_mcp.defineMcpTool)({
+  name: "web-batch-scrape",
+  description: "Scrape multiple URLs in parallel for efficiency. Returns results for all URLs that succeeded, with errors for those that failed. Use this when you need to scrape multiple pages at once.",
+  parameters: import_zod2.z.object({
+    urls: import_zod2.z.array(import_zod2.z.string().url()).min(1).max(10).describe("Array of URLs to scrape (max 10)"),
+    includeLinks: import_zod2.z.boolean().optional().describe("Whether to extract links from pages"),
+    includeImages: import_zod2.z.boolean().optional().describe("Whether to extract images from pages"),
+    timeout: import_zod2.z.number().min(1e4).max(6e5).optional().describe("Timeout in milliseconds (default: 120000)")
+  }),
+  domain: "web",
+  tags: ["scrape", "batch", "extract", "content", "bulk"],
+  async execute({ urls, includeLinks, includeImages, timeout }) {
+    logDebug("WEB-BATCH-SCRAPE", `Starting batch scrape`, {
+      urlCount: urls.length
+    });
+    const useCase = getWebSearchUseCase();
+    const response = await useCase.scrapeMany(urls, {
+      includeLinks,
+      includeImages,
+      timeout: timeout ?? 12e4,
+      cache: true,
+      onProgress: createProgressLogger("WEB-BATCH-SCRAPE")
+    });
+    const results = [];
+    const failed = [];
+    for (const [url, scrapeResponse] of response.results) {
+      results.push(scrapeResponse.result);
+    }
+    for (const [url, error] of response.failed) {
+      failed.push({ url, error: error.message });
+    }
+    logDebug("WEB-BATCH-SCRAPE", `Batch scrape complete`, {
+      successCount: results.length,
+      failedCount: failed.length,
+      totalDuration: response.totalDuration
+    });
+    return { results, failed };
+  }
+});
+var webSnapshotTool = (0, import_mcp.defineMcpTool)({
+  name: "web-snapshot",
+  description: "Get an accessibility tree snapshot of a webpage. Returns a structured representation of the page with element references. Use this for analyzing page structure or preparing for more specific interactions.",
+  parameters: import_zod2.z.object({
+    url: import_zod2.z.string().url().describe("The URL to snapshot")
+  }),
+  domain: "web",
+  tags: ["snapshot", "analyze", "inspect", "structure"],
+  async execute({ url }) {
+    logDebug("WEB-SNAPSHOT", `Starting snapshot`, { url });
+    const service = getBrowserService();
+    try {
+      const snapshot = await service.navigate(url);
+      logDebug("WEB-SNAPSHOT", `SUCCESS`);
+      return snapshot;
+    } catch (error) {
+      logDebug("WEB-SNAPSHOT", `FAILED`, { error: String(error) });
+      console.error("[web-snapshot] Error:", error);
+      throw error;
+    }
+  }
+});
+var webHealthCheckTool = (0, import_mcp.defineMcpTool)({
+  name: "web-health-check",
+  description: "Check the health status of all web search and scraping services. Returns availability and latency information for each service.",
+  parameters: import_zod2.z.object({}),
+  domain: "web",
+  tags: ["health", "status", "diagnostics"],
+  async execute() {
+    logDebug("WEB-HEALTH", `Starting health check`);
+    const useCase = getWebSearchUseCase();
+    const health = await useCase.healthCheck();
+    logDebug("WEB-HEALTH", `Health check complete`, {
+      searchServices: health.search.length,
+      scraperServices: health.scraper.length
+    });
+    return health;
+  }
+});
+var webSearchTools = {
+  "web-search": webSearchTool,
+  "web-scrape": webScrapeTool,
+  "web-batch-scrape": webBatchScrapeTool,
+  "web-snapshot": webSnapshotTool,
+  "web-health-check": webHealthCheckTool
+};
+if (typeof process !== "undefined") {
+  process.on("beforeExit", async () => {
+    await closeBrowserService();
+  });
+}
+
+// src/ports/search.port.ts
+var noopWebSearch = {
+  async search(query) {
+    return {
+      results: { query, results: [] },
+      cached: false,
+      duration: 0,
+      source: "noop"
+    };
+  },
+  async isAvailable() {
+    return false;
+  },
+  getName() {
+    return "noop";
+  }
+};
+
+// src/ports/scraper.port.ts
+var noopWebScraper = {
+  async scrape(url) {
+    return {
+      result: { url, title: "", content: "" },
+      cached: false,
+      duration: 0,
+      source: "noop"
+    };
+  },
+  async scrapeMany(urls) {
+    const results = /* @__PURE__ */ new Map();
+    const failed = /* @__PURE__ */ new Map();
+    for (const url of urls) {
+      results.set(url, {
+        result: { url, title: "", content: "" },
+        cached: false,
+        duration: 0,
+        source: "noop"
+      });
+    }
+    return { results, failed, totalDuration: 0 };
+  },
+  async isAvailable() {
+    return false;
+  },
+  getName() {
+    return "noop";
+  }
+};
+
+// src/ports/extractor.port.ts
+var basicContentExtractor = {
+  extract(html, url, options = {}) {
+    const { maxTextLength = 1e4 } = options;
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const title = titleMatch?.[1]?.trim() ?? "";
+    const descMatch = html.match(
+      /<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i
+    );
+    const description = descMatch?.[1]?.trim();
+    const textContent = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, maxTextLength);
+    const headings = [];
+    const headingRegex = /<h([1-6])[^>]*>([^<]+)<\/h[1-6]>/gi;
+    let match;
+    while ((match = headingRegex.exec(html)) !== null) {
+      if (match[1] && match[2]) {
+        headings.push({ level: parseInt(match[1], 10), text: match[2].trim() });
+      }
+    }
+    const links = [];
+    if (options.includeLinks) {
+      const linkRegex = /<a[^>]*href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi;
+      while ((match = linkRegex.exec(html)) !== null) {
+        if (match[1] && match[2]) {
+          links.push({ href: match[1], text: match[2].trim() });
+        }
+      }
+    }
+    const images = [];
+    if (options.includeImages) {
+      const imgRegex = /<img[^>]*src=["']([^"']+)["'][^>]*(?:alt=["']([^"']*)["'])?/gi;
+      while ((match = imgRegex.exec(html)) !== null) {
+        if (match[1]) {
+          images.push({ src: match[1], alt: match[2] });
+        }
+      }
+    }
+    const wordCount = textContent.split(/\s+/).length;
+    const readingTime = Math.ceil(wordCount / 200);
+    return {
+      text: textContent,
+      title,
+      description,
+      headings,
+      links,
+      images,
+      videos: [],
+      metadata: { url },
+      readingTime
+    };
+  },
+  supports(option) {
+    const supported = [
+      "includeImages",
+      "includeLinks",
+      "maxTextLength",
+      "cleanHtml"
+    ];
+    return supported.includes(option);
+  },
+  getName() {
+    return "basic";
+  }
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  BrowserService,
+  BrowserServiceScraperAdapter,
+  BrowserServiceSearchAdapter,
+  Crawl4AIScraperAdapter,
+  Crawl4AISearchAdapter,
+  Crawl4AIService,
+  WebSearchUseCase,
+  basicContentExtractor,
+  browserActionSchema,
+  buildSearchUrl,
+  clearLog,
+  closeBrowserService,
+  extractedAudioSchema,
+  extractedImageSchema,
+  extractedVideoSchema,
+  getBrowserService,
+  logDebug,
+  noopWebScraper,
+  noopWebSearch,
+  normalizeSearchType,
+  parseImageResults,
+  parseJsonResults,
+  parseSearchResults,
+  parseVideoResults,
+  scrapeResultSchema,
+  searchResultSchema,
+  searchResultsSchema,
+  videoProviderSchema,
+  webBatchScrapeTool,
+  webHealthCheckTool,
+  webScrapeTool,
+  webSearchTool,
+  webSearchTools,
+  webSnapshotTool
+});
+//# sourceMappingURL=index.js.map

@@ -1,0 +1,22 @@
+
+> @onegenui/web-search@0.1.0 build /Users/giulioleone/Sviluppo/genUi/json-render/packages/web-search
+> tsup
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /Users/giulioleone/Sviluppo/genUi/json-render/packages/web-search/tsup.config.ts
+CLI Target: es2022
+CLI Cleaning output folder
+CJS Build start
+ESM Build start
+ESM dist/index.mjs     67.00 KB
+ESM dist/index.mjs.map 148.16 KB
+ESM ⚡️ Build success in 84ms
+CJS dist/index.js     71.72 KB
+CJS dist/index.js.map 149.40 KB
+CJS ⚡️ Build success in 84ms
+DTS Build start
+DTS ⚡️ Build success in 857ms
+DTS dist/index.d.ts  24.98 KB
+DTS dist/index.d.mts 24.98 KB
