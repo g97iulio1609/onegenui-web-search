@@ -177,7 +177,8 @@ export const webScrapeTool = defineMcpTool({
   name: "web-scrape",
   description:
     "Scrape and extract content from a specific webpage URL. Returns the page title, main content, and optionally links and images. " +
-    "Use this when the user wants to read or analyze content from a specific website.",
+    "Use this when the user wants to read or analyze content from a specific website. " +
+    "Images are automatically validated and sorted by quality (HD images preferred).",
   parameters: z.object({
     url: z.string().url().describe("The URL to scrape"),
     includeLinks: z
@@ -188,6 +189,16 @@ export const webScrapeTool = defineMcpTool({
       .boolean()
       .optional()
       .describe("Whether to extract images from the page"),
+    validateImages: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe("Whether to validate image URLs are accessible (default: true)"),
+    preferHDImages: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe("Whether to prefer HD images (800x600+) over smaller ones (default: true)"),
     maxContentLength: z
       .number()
       .optional()
@@ -206,6 +217,8 @@ export const webScrapeTool = defineMcpTool({
     url,
     includeLinks,
     includeImages,
+    validateImages = true,
+    preferHDImages = true,
     maxContentLength,
     timeout,
   }): Promise<ScrapeResult> {
@@ -221,15 +234,56 @@ export const webScrapeTool = defineMcpTool({
       onProgress: createProgressLogger("WEB-SCRAPE"),
     });
 
+    // Process images if requested and available
+    let result = response.result;
+    if (includeImages && result.images && result.images.length > 0) {
+      const { validateAndScoreImages, selectBestImage } = await import("./utils/image-validator.js");
+      
+      // Convert legacy format to ExtractedImage for validation
+      const extendedImages = result.images.map(img => ({
+        src: img.src,
+        alt: img.alt,
+      }));
+      
+      if (validateImages) {
+        // Validate and score images in parallel (non-blocking for main flow)
+        const validatedImages = await validateAndScoreImages(extendedImages, {
+          maxImages: 10,
+          timeout: 3000,
+          requireHD: preferHDImages,
+        });
+        
+        logDebug("WEB-SCRAPE", `Image validation complete`, {
+          original: result.images.length,
+          validated: validatedImages.length,
+        });
+        
+        // Convert back to legacy format
+        const legacyImages = validatedImages.map(img => ({
+          src: img.src,
+          alt: img.alt ?? "",
+        }));
+        result = { ...result, images: legacyImages };
+      } else {
+        // Just score and sort without validation
+        const best = selectBestImage(extendedImages);
+        if (best) {
+          const bestLegacy = { src: best.src, alt: best.alt ?? "" };
+          result = { ...result, images: [bestLegacy, ...result.images.filter(i => i.src !== best.src)] };
+        }
+      }
+    }
+
     logDebug("WEB-SCRAPE", `Scrape complete`, {
       url: response.result.url,
       contentLength: response.result.content?.length ?? 0,
       cached: response.cached,
       duration: response.duration,
       source: response.source,
+      imageCount: result.images?.length ?? 0,
     });
 
-    return response.result;
+    return result;
   },
 });
 
@@ -241,7 +295,7 @@ export const webBatchScrapeTool = defineMcpTool({
   name: "web-batch-scrape",
   description:
     "Scrape multiple URLs in parallel for efficiency. Returns results for all URLs that succeeded, with errors for those that failed. " +
-    "Use this when you need to scrape multiple pages at once.",
+    "Images are automatically validated and sorted by quality.",
   parameters: z.object({
     urls: z
       .array(z.string().url())
@@ -256,6 +310,11 @@ export const webBatchScrapeTool = defineMcpTool({
       .boolean()
       .optional()
       .describe("Whether to extract images from pages"),
+    validateImages: z
+      .boolean()
+      .optional()
+      .default(true)
+      .describe("Whether to validate image URLs are accessible (default: true)"),
     timeout: z
       .number()
       .min(10000)
@@ -266,7 +325,7 @@ export const webBatchScrapeTool = defineMcpTool({
   domain: "web",
   tags: ["scrape", "batch", "extract", "content", "bulk"],
 
-  async execute({ urls, includeLinks, includeImages, timeout }): Promise<{
+  async execute({ urls, includeLinks, includeImages, validateImages = true, timeout }): Promise<{
     results: ScrapeResult[];
     failed: Array<{ url: string; error: string }>;
   }> {
@@ -286,8 +345,35 @@ export const webBatchScrapeTool = defineMcpTool({
     const results: ScrapeResult[] = [];
     const failed: Array<{ url: string; error: string }> = [];
 
-    for (const [url, scrapeResponse] of response.results) {
-      results.push(scrapeResponse.result);
+    // Process images in parallel if needed
+    const { validateAndScoreImages } = await import("./utils/image-validator.js");
+
+    for (const [_url, scrapeResponse] of response.results) {
+      let result = scrapeResponse.result;
+      
+      // Validate images if requested
+      if (includeImages && validateImages && result.images && result.images.length > 0) {
+        // Convert legacy format to ExtractedImage
+        const extendedImages = result.images.map(img => ({
+          src: img.src,
+          alt: img.alt,
+        }));
+        
+        const validatedImages = await validateAndScoreImages(extendedImages, {
+          maxImages: 5, // Less per URL in batch mode
+          timeout: 2000,
+          requireHD: true,
+        });
+        
+        // Convert back to legacy format
+        const legacyImages = validatedImages.map(img => ({
+          src: img.src,
+          alt: img.alt ?? "",
+        }));
+        result = { ...result, images: legacyImages };
+      }
+      
+      results.push(result);
     }
 
     for (const [url, error] of response.failed) {

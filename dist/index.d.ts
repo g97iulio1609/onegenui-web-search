@@ -278,6 +278,8 @@ declare const webScrapeTool: _onegenui_mcp.McpToolDefinition<z.ZodObject<{
     url: z.ZodString;
     includeLinks: z.ZodOptional<z.ZodBoolean>;
     includeImages: z.ZodOptional<z.ZodBoolean>;
+    validateImages: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+    preferHDImages: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     maxContentLength: z.ZodOptional<z.ZodNumber>;
     timeout: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>>;
@@ -285,6 +287,7 @@ declare const webBatchScrapeTool: _onegenui_mcp.McpToolDefinition<z.ZodObject<{
     urls: z.ZodArray<z.ZodString>;
     includeLinks: z.ZodOptional<z.ZodBoolean>;
     includeImages: z.ZodOptional<z.ZodBoolean>;
+    validateImages: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
     timeout: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>>;
 declare const webSnapshotTool: _onegenui_mcp.McpToolDefinition<z.ZodObject<{
@@ -312,6 +315,8 @@ declare const webSearchTools: {
         url: z.ZodString;
         includeLinks: z.ZodOptional<z.ZodBoolean>;
         includeImages: z.ZodOptional<z.ZodBoolean>;
+        validateImages: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
+        preferHDImages: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         maxContentLength: z.ZodOptional<z.ZodNumber>;
         timeout: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>>;
@@ -319,6 +324,7 @@ declare const webSearchTools: {
         urls: z.ZodArray<z.ZodString>;
         includeLinks: z.ZodOptional<z.ZodBoolean>;
         includeImages: z.ZodOptional<z.ZodBoolean>;
+        validateImages: z.ZodDefault<z.ZodOptional<z.ZodBoolean>>;
         timeout: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>>;
     "web-snapshot": _onegenui_mcp.McpToolDefinition<z.ZodObject<{
@@ -326,6 +332,49 @@ declare const webSearchTools: {
     }, z.core.$strip>>;
     "web-health-check": _onegenui_mcp.McpToolDefinition<z.ZodObject<{}, z.core.$strip>>;
 };
+
+/**
+ * Image validation utilities - parallel validation without blocking
+ *
+ * Validates image URLs are accessible and prefers high-resolution images.
+ */
+
+/**
+ * Check if URL is from a reliable domain
+ */
+declare function isReliableDomain(url: string): boolean;
+/**
+ * Check if URL is from a known unreliable domain
+ */
+declare function isUnreliableDomain(url: string): boolean;
+/**
+ * Check if image dimensions indicate HD quality
+ */
+declare function isHDImage(img: ExtractedImage): boolean;
+/**
+ * Calculate image score based on various factors
+ * Higher score = better quality
+ */
+declare function scoreImage(img: ExtractedImage): number;
+/**
+ * Validate a single image URL via HEAD request
+ * Returns true if accessible, false otherwise
+ */
+declare function validateImageUrl(url: string, timeout?: number): Promise<boolean>;
+/**
+ * Validate multiple images in parallel (non-blocking)
+ * Returns images that passed validation, sorted by score
+ */
+declare function validateAndScoreImages(images: ExtractedImage[], options?: {
+    maxImages?: number;
+    timeout?: number;
+    requireHD?: boolean;
+}): Promise<ExtractedImage[]>;
+/**
+ * Select the best image from a list (quick, no validation)
+ * Useful when you need just one image quickly
+ */
+declare function selectBestImage(images: ExtractedImage[]): ExtractedImage | null;
 
 /**
  * Progress callback for search operations
@@ -741,4 +790,4 @@ declare function parseSearchResults(markdown: string, maxResults: number): Searc
  */
 declare function parseJsonResults(content: string, maxResults: number): SearchResult[] | null;
 
-export { type ActionEmitter, type BatchScrapeResponse, type BrowserAction, type BrowserActionStatus, BrowserService, type BrowserServiceOptions, BrowserServiceScraperAdapter, BrowserServiceSearchAdapter, type ContentExtractorPort, type ExtendedScrapeOptions, type ExtendedSearchOptions, type ExtractedAudio, type ExtractedContent, type ExtractedImage, type ExtractedVideo, type ExtractionOptions, type HealthStatus, OneCrawlScraperAdapter, OneCrawlSearchAdapter, type PageSnapshot, type RetryConfig, type ScrapeOptions, type ScrapeProgress, type ScrapeProgressCallback, type ScrapeResponse, type ScrapeResult, type SearchEngine, type SearchOptions, type SearchProgress, type SearchProgressCallback, type SearchResponse, type SearchResult, type SearchResults, type SearchType, type SnapshotRef, type VideoProvider, type WebScraperPort, type WebSearchPort, WebSearchUseCase, basicContentExtractor, browserActionSchema, buildSearchUrl, clearLog, closeBrowserService, createOneCrawlScraperAdapter, createOneCrawlSearchAdapter, extractedAudioSchema, extractedImageSchema, extractedVideoSchema, getBrowserService, logDebug, noopWebScraper, noopWebSearch, normalizeSearchType, parseImageResults, parseJsonResults, parseSearchResults, parseVideoResults, scrapeResultSchema, searchResultSchema, searchResultsSchema, videoProviderSchema, webBatchScrapeTool, webHealthCheckTool, webScrapeTool, webSearchTool, webSearchTools, webSnapshotTool };
+export { type ActionEmitter, type BatchScrapeResponse, type BrowserAction, type BrowserActionStatus, BrowserService, type BrowserServiceOptions, BrowserServiceScraperAdapter, BrowserServiceSearchAdapter, type ContentExtractorPort, type ExtendedScrapeOptions, type ExtendedSearchOptions, type ExtractedAudio, type ExtractedContent, type ExtractedImage, type ExtractedVideo, type ExtractionOptions, type HealthStatus, OneCrawlScraperAdapter, OneCrawlSearchAdapter, type PageSnapshot, type RetryConfig, type ScrapeOptions, type ScrapeProgress, type ScrapeProgressCallback, type ScrapeResponse, type ScrapeResult, type SearchEngine, type SearchOptions, type SearchProgress, type SearchProgressCallback, type SearchResponse, type SearchResult, type SearchResults, type SearchType, type SnapshotRef, type VideoProvider, type WebScraperPort, type WebSearchPort, WebSearchUseCase, basicContentExtractor, browserActionSchema, buildSearchUrl, clearLog, closeBrowserService, createOneCrawlScraperAdapter, createOneCrawlSearchAdapter, extractedAudioSchema, extractedImageSchema, extractedVideoSchema, getBrowserService, isHDImage, isReliableDomain, isUnreliableDomain, logDebug, noopWebScraper, noopWebSearch, normalizeSearchType, parseImageResults, parseJsonResults, parseSearchResults, parseVideoResults, scoreImage, scrapeResultSchema, searchResultSchema, searchResultsSchema, selectBestImage, validateAndScoreImages, validateImageUrl, videoProviderSchema, webBatchScrapeTool, webHealthCheckTool, webScrapeTool, webSearchTool, webSearchTools, webSnapshotTool };

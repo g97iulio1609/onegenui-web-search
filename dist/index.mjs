@@ -1,3 +1,13 @@
+import {
+  isHDImage,
+  isReliableDomain,
+  isUnreliableDomain,
+  scoreImage,
+  selectBestImage,
+  validateAndScoreImages,
+  validateImageUrl
+} from "./chunk-NDPPPUDM.mjs";
+
 // src/types.ts
 import { z } from "zod";
 var videoProviderSchema = z.enum([
@@ -1090,11 +1100,13 @@ var webSearchTool = defineMcpTool({
 });
 var webScrapeTool = defineMcpTool({
   name: "web-scrape",
-  description: "Scrape and extract content from a specific webpage URL. Returns the page title, main content, and optionally links and images. Use this when the user wants to read or analyze content from a specific website.",
+  description: "Scrape and extract content from a specific webpage URL. Returns the page title, main content, and optionally links and images. Use this when the user wants to read or analyze content from a specific website. Images are automatically validated and sorted by quality (HD images preferred).",
   parameters: z2.object({
     url: z2.string().url().describe("The URL to scrape"),
     includeLinks: z2.boolean().optional().describe("Whether to extract links from the page"),
     includeImages: z2.boolean().optional().describe("Whether to extract images from the page"),
+    validateImages: z2.boolean().optional().default(true).describe("Whether to validate image URLs are accessible (default: true)"),
+    preferHDImages: z2.boolean().optional().default(true).describe("Whether to prefer HD images (800x600+) over smaller ones (default: true)"),
     maxContentLength: z2.number().optional().describe("Maximum characters of content to return"),
     timeout: z2.number().min(5e3).max(3e5).optional().describe("Timeout in milliseconds (default: 30000)")
   }),
@@ -1104,6 +1116,8 @@ var webScrapeTool = defineMcpTool({
     url,
     includeLinks,
     includeImages,
+    validateImages = true,
+    preferHDImages = true,
     maxContentLength,
     timeout
   }) {
@@ -1117,28 +1131,60 @@ var webScrapeTool = defineMcpTool({
       cache: true,
       onProgress: createProgressLogger("WEB-SCRAPE")
     });
+    let result = response.result;
+    if (includeImages && result.images && result.images.length > 0) {
+      const { validateAndScoreImages: validateAndScoreImages2, selectBestImage: selectBestImage2 } = await import("./image-validator-UGIVQ6LF.mjs");
+      const extendedImages = result.images.map((img) => ({
+        src: img.src,
+        alt: img.alt
+      }));
+      if (validateImages) {
+        const validatedImages = await validateAndScoreImages2(extendedImages, {
+          maxImages: 10,
+          timeout: 3e3,
+          requireHD: preferHDImages
+        });
+        logDebug("WEB-SCRAPE", `Image validation complete`, {
+          original: result.images.length,
+          validated: validatedImages.length
+        });
+        const legacyImages = validatedImages.map((img) => ({
+          src: img.src,
+          alt: img.alt ?? ""
+        }));
+        result = { ...result, images: legacyImages };
+      } else {
+        const best = selectBestImage2(extendedImages);
+        if (best) {
+          const bestLegacy = { src: best.src, alt: best.alt ?? "" };
+          result = { ...result, images: [bestLegacy, ...result.images.filter((i) => i.src !== best.src)] };
+        }
+      }
+    }
     logDebug("WEB-SCRAPE", `Scrape complete`, {
       url: response.result.url,
       contentLength: response.result.content?.length ?? 0,
       cached: response.cached,
       duration: response.duration,
-      source: response.source
+      source: response.source,
+      imageCount: result.images?.length ?? 0
     });
-    return response.result;
+    return result;
   }
 });
 var webBatchScrapeTool = defineMcpTool({
   name: "web-batch-scrape",
-  description: "Scrape multiple URLs in parallel for efficiency. Returns results for all URLs that succeeded, with errors for those that failed. Use this when you need to scrape multiple pages at once.",
+  description: "Scrape multiple URLs in parallel for efficiency. Returns results for all URLs that succeeded, with errors for those that failed. Images are automatically validated and sorted by quality.",
   parameters: z2.object({
     urls: z2.array(z2.string().url()).min(1).max(10).describe("Array of URLs to scrape (max 10)"),
     includeLinks: z2.boolean().optional().describe("Whether to extract links from pages"),
     includeImages: z2.boolean().optional().describe("Whether to extract images from pages"),
+    validateImages: z2.boolean().optional().default(true).describe("Whether to validate image URLs are accessible (default: true)"),
     timeout: z2.number().min(1e4).max(6e5).optional().describe("Timeout in milliseconds (default: 120000)")
   }),
   domain: "web",
   tags: ["scrape", "batch", "extract", "content", "bulk"],
-  async execute({ urls, includeLinks, includeImages, timeout }) {
+  async execute({ urls, includeLinks, includeImages, validateImages = true, timeout }) {
     logDebug("WEB-BATCH-SCRAPE", `Starting batch scrape`, {
       urlCount: urls.length
     });
@@ -1152,8 +1198,27 @@ var webBatchScrapeTool = defineMcpTool({
     });
     const results = [];
     const failed = [];
-    for (const [url, scrapeResponse] of response.results) {
-      results.push(scrapeResponse.result);
+    const { validateAndScoreImages: validateAndScoreImages2 } = await import("./image-validator-UGIVQ6LF.mjs");
+    for (const [_url, scrapeResponse] of response.results) {
+      let result = scrapeResponse.result;
+      if (includeImages && validateImages && result.images && result.images.length > 0) {
+        const extendedImages = result.images.map((img) => ({
+          src: img.src,
+          alt: img.alt
+        }));
+        const validatedImages = await validateAndScoreImages2(extendedImages, {
+          maxImages: 5,
+          // Less per URL in batch mode
+          timeout: 2e3,
+          requireHD: true
+        });
+        const legacyImages = validatedImages.map((img) => ({
+          src: img.src,
+          alt: img.alt ?? ""
+        }));
+        result = { ...result, images: legacyImages };
+      }
+      results.push(result);
     }
     for (const [url, error] of response.failed) {
       failed.push({ url, error: error.message });
@@ -1508,6 +1573,9 @@ export {
   extractedImageSchema,
   extractedVideoSchema,
   getBrowserService,
+  isHDImage,
+  isReliableDomain,
+  isUnreliableDomain,
   logDebug,
   noopWebScraper,
   noopWebSearch,
@@ -1516,9 +1584,13 @@ export {
   parseJsonResults,
   parseSearchResults2 as parseSearchResults,
   parseVideoResults,
+  scoreImage,
   scrapeResultSchema,
   searchResultSchema,
   searchResultsSchema,
+  selectBestImage,
+  validateAndScoreImages,
+  validateImageUrl,
   videoProviderSchema,
   webBatchScrapeTool,
   webHealthCheckTool,

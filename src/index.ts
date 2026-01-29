@@ -11,6 +11,7 @@ export * from "./browser-service";
 // Utilities
 export * from "./logger";
 export * from "./tools";
+export * from "./utils";
 
 // Hexagonal Architecture Exports
 export * from "./ports";

@@ -5,6 +5,9 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -27,6 +30,162 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
+// src/utils/image-validator.ts
+var image_validator_exports = {};
+__export(image_validator_exports, {
+  isHDImage: () => isHDImage,
+  isReliableDomain: () => isReliableDomain,
+  isUnreliableDomain: () => isUnreliableDomain,
+  scoreImage: () => scoreImage,
+  selectBestImage: () => selectBestImage,
+  validateAndScoreImages: () => validateAndScoreImages,
+  validateImageUrl: () => validateImageUrl
+});
+function isReliableDomain(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    return RELIABLE_DOMAINS.has(hostname) || Array.from(RELIABLE_DOMAINS).some((d) => hostname.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
+function isUnreliableDomain(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    return UNRELIABLE_DOMAINS.has(hostname) || Array.from(UNRELIABLE_DOMAINS).some((d) => hostname.endsWith(`.${d}`));
+  } catch {
+    return true;
+  }
+}
+function isHDImage(img) {
+  if (!img.width || !img.height) return false;
+  return img.width >= MIN_HD_WIDTH && img.height >= MIN_HD_HEIGHT;
+}
+function scoreImage(img) {
+  let score = 0;
+  if (img.width && img.height) {
+    const pixels = img.width * img.height;
+    if (pixels >= 1920 * 1080) score += 50;
+    else if (pixels >= 1280 * 720) score += 40;
+    else if (pixels >= 800 * 600) score += 30;
+    else if (pixels >= 400 * 300) score += 15;
+  } else {
+    score += 20;
+  }
+  if (isReliableDomain(img.src)) {
+    score += 30;
+  } else if (isUnreliableDomain(img.src)) {
+    score -= 50;
+  } else {
+    score += 10;
+  }
+  if (img.alt && img.alt.length > 3) {
+    score += 10;
+  }
+  if (img.score) {
+    score += img.score;
+  }
+  return score;
+}
+async function validateImageUrl(url, timeout = 3e3) {
+  if (isUnreliableDomain(url)) {
+    return false;
+  }
+  if (isReliableDomain(url)) {
+    return true;
+  }
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const response = await fetch(url, {
+      method: "HEAD",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; OneGenUI/1.0; Image Validator)"
+      }
+    });
+    clearTimeout(timeoutId);
+    const contentType = response.headers.get("content-type") || "";
+    const isImage = contentType.startsWith("image/");
+    return response.ok && isImage;
+  } catch {
+    return false;
+  }
+}
+async function validateAndScoreImages(images, options = {}) {
+  const { maxImages = 10, timeout = 3e3, requireHD = false } = options;
+  const candidates = images.filter((img) => {
+    if (!img.src) return false;
+    if (isUnreliableDomain(img.src)) return false;
+    if (requireHD && !isHDImage(img)) return false;
+    return true;
+  });
+  const scored = candidates.map((img) => ({
+    img,
+    score: scoreImage(img)
+  }));
+  scored.sort((a, b) => b.score - a.score);
+  const topCandidates = scored.slice(0, maxImages * 2);
+  const validationResults = await Promise.all(
+    topCandidates.map(async ({ img, score }) => ({
+      img,
+      score,
+      valid: await validateImageUrl(img.src, timeout)
+    }))
+  );
+  return validationResults.filter((r) => r.valid).slice(0, maxImages).map((r) => r.img);
+}
+function selectBestImage(images) {
+  if (!images.length) return null;
+  const reliable = images.filter((img) => !isUnreliableDomain(img.src));
+  if (!reliable.length) return images[0] ?? null;
+  let best = reliable[0];
+  let bestScore = scoreImage(best);
+  for (let i = 1; i < reliable.length; i++) {
+    const img = reliable[i];
+    const score = scoreImage(img);
+    if (score > bestScore) {
+      best = img;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+var MIN_HD_WIDTH, MIN_HD_HEIGHT, RELIABLE_DOMAINS, UNRELIABLE_DOMAINS;
+var init_image_validator = __esm({
+  "src/utils/image-validator.ts"() {
+    "use strict";
+    MIN_HD_WIDTH = 800;
+    MIN_HD_HEIGHT = 600;
+    RELIABLE_DOMAINS = /* @__PURE__ */ new Set([
+      "unsplash.com",
+      "images.unsplash.com",
+      "images.pexels.com",
+      "cdn.pixabay.com",
+      "cache.marriott.com",
+      "photos.hotelbeds.com",
+      "cf.bstatic.com",
+      // booking.com
+      "q-xx.bstatic.com",
+      // booking.com
+      "images.trvl-media.com",
+      // Expedia
+      "media-cdn.tripadvisor.com",
+      "lh3.googleusercontent.com",
+      "i.ytimg.com"
+    ]);
+    UNRELIABLE_DOMAINS = /* @__PURE__ */ new Set([
+      "placeholder.com",
+      "via.placeholder.com",
+      "example.com",
+      "placehold.it",
+      "dummyimage.com",
+      "picsum.photos"
+      // Can be slow/unreliable
+    ]);
+  }
+});
+
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
@@ -47,6 +206,9 @@ __export(index_exports, {
   extractedImageSchema: () => extractedImageSchema,
   extractedVideoSchema: () => extractedVideoSchema,
   getBrowserService: () => getBrowserService,
+  isHDImage: () => isHDImage,
+  isReliableDomain: () => isReliableDomain,
+  isUnreliableDomain: () => isUnreliableDomain,
   logDebug: () => logDebug,
   noopWebScraper: () => noopWebScraper,
   noopWebSearch: () => noopWebSearch,
@@ -55,9 +217,13 @@ __export(index_exports, {
   parseJsonResults: () => parseJsonResults,
   parseSearchResults: () => parseSearchResults2,
   parseVideoResults: () => parseVideoResults,
+  scoreImage: () => scoreImage,
   scrapeResultSchema: () => scrapeResultSchema,
   searchResultSchema: () => searchResultSchema,
   searchResultsSchema: () => searchResultsSchema,
+  selectBestImage: () => selectBestImage,
+  validateAndScoreImages: () => validateAndScoreImages,
+  validateImageUrl: () => validateImageUrl,
   videoProviderSchema: () => videoProviderSchema,
   webBatchScrapeTool: () => webBatchScrapeTool,
   webHealthCheckTool: () => webHealthCheckTool,
@@ -1158,11 +1324,13 @@ var webSearchTool = (0, import_mcp.defineMcpTool)({
 });
 var webScrapeTool = (0, import_mcp.defineMcpTool)({
   name: "web-scrape",
-  description: "Scrape and extract content from a specific webpage URL. Returns the page title, main content, and optionally links and images. Use this when the user wants to read or analyze content from a specific website.",
+  description: "Scrape and extract content from a specific webpage URL. Returns the page title, main content, and optionally links and images. Use this when the user wants to read or analyze content from a specific website. Images are automatically validated and sorted by quality (HD images preferred).",
   parameters: import_zod2.z.object({
     url: import_zod2.z.string().url().describe("The URL to scrape"),
     includeLinks: import_zod2.z.boolean().optional().describe("Whether to extract links from the page"),
     includeImages: import_zod2.z.boolean().optional().describe("Whether to extract images from the page"),
+    validateImages: import_zod2.z.boolean().optional().default(true).describe("Whether to validate image URLs are accessible (default: true)"),
+    preferHDImages: import_zod2.z.boolean().optional().default(true).describe("Whether to prefer HD images (800x600+) over smaller ones (default: true)"),
     maxContentLength: import_zod2.z.number().optional().describe("Maximum characters of content to return"),
     timeout: import_zod2.z.number().min(5e3).max(3e5).optional().describe("Timeout in milliseconds (default: 30000)")
   }),
@@ -1172,6 +1340,8 @@ var webScrapeTool = (0, import_mcp.defineMcpTool)({
     url,
     includeLinks,
     includeImages,
+    validateImages = true,
+    preferHDImages = true,
     maxContentLength,
     timeout
   }) {
@@ -1185,28 +1355,60 @@ var webScrapeTool = (0, import_mcp.defineMcpTool)({
       cache: true,
       onProgress: createProgressLogger("WEB-SCRAPE")
     });
+    let result = response.result;
+    if (includeImages && result.images && result.images.length > 0) {
+      const { validateAndScoreImages: validateAndScoreImages2, selectBestImage: selectBestImage2 } = await Promise.resolve().then(() => (init_image_validator(), image_validator_exports));
+      const extendedImages = result.images.map((img) => ({
+        src: img.src,
+        alt: img.alt
+      }));
+      if (validateImages) {
+        const validatedImages = await validateAndScoreImages2(extendedImages, {
+          maxImages: 10,
+          timeout: 3e3,
+          requireHD: preferHDImages
+        });
+        logDebug("WEB-SCRAPE", `Image validation complete`, {
+          original: result.images.length,
+          validated: validatedImages.length
+        });
+        const legacyImages = validatedImages.map((img) => ({
+          src: img.src,
+          alt: img.alt ?? ""
+        }));
+        result = { ...result, images: legacyImages };
+      } else {
+        const best = selectBestImage2(extendedImages);
+        if (best) {
+          const bestLegacy = { src: best.src, alt: best.alt ?? "" };
+          result = { ...result, images: [bestLegacy, ...result.images.filter((i) => i.src !== best.src)] };
+        }
+      }
+    }
     logDebug("WEB-SCRAPE", `Scrape complete`, {
       url: response.result.url,
       contentLength: response.result.content?.length ?? 0,
       cached: response.cached,
       duration: response.duration,
-      source: response.source
+      source: response.source,
+      imageCount: result.images?.length ?? 0
     });
-    return response.result;
+    return result;
   }
 });
 var webBatchScrapeTool = (0, import_mcp.defineMcpTool)({
   name: "web-batch-scrape",
-  description: "Scrape multiple URLs in parallel for efficiency. Returns results for all URLs that succeeded, with errors for those that failed. Use this when you need to scrape multiple pages at once.",
+  description: "Scrape multiple URLs in parallel for efficiency. Returns results for all URLs that succeeded, with errors for those that failed. Images are automatically validated and sorted by quality.",
   parameters: import_zod2.z.object({
     urls: import_zod2.z.array(import_zod2.z.string().url()).min(1).max(10).describe("Array of URLs to scrape (max 10)"),
     includeLinks: import_zod2.z.boolean().optional().describe("Whether to extract links from pages"),
     includeImages: import_zod2.z.boolean().optional().describe("Whether to extract images from pages"),
+    validateImages: import_zod2.z.boolean().optional().default(true).describe("Whether to validate image URLs are accessible (default: true)"),
     timeout: import_zod2.z.number().min(1e4).max(6e5).optional().describe("Timeout in milliseconds (default: 120000)")
   }),
   domain: "web",
   tags: ["scrape", "batch", "extract", "content", "bulk"],
-  async execute({ urls, includeLinks, includeImages, timeout }) {
+  async execute({ urls, includeLinks, includeImages, validateImages = true, timeout }) {
     logDebug("WEB-BATCH-SCRAPE", `Starting batch scrape`, {
       urlCount: urls.length
     });
@@ -1220,8 +1422,27 @@ var webBatchScrapeTool = (0, import_mcp.defineMcpTool)({
     });
     const results = [];
     const failed = [];
-    for (const [url, scrapeResponse] of response.results) {
-      results.push(scrapeResponse.result);
+    const { validateAndScoreImages: validateAndScoreImages2 } = await Promise.resolve().then(() => (init_image_validator(), image_validator_exports));
+    for (const [_url, scrapeResponse] of response.results) {
+      let result = scrapeResponse.result;
+      if (includeImages && validateImages && result.images && result.images.length > 0) {
+        const extendedImages = result.images.map((img) => ({
+          src: img.src,
+          alt: img.alt
+        }));
+        const validatedImages = await validateAndScoreImages2(extendedImages, {
+          maxImages: 5,
+          // Less per URL in batch mode
+          timeout: 2e3,
+          requireHD: true
+        });
+        const legacyImages = validatedImages.map((img) => ({
+          src: img.src,
+          alt: img.alt ?? ""
+        }));
+        result = { ...result, images: legacyImages };
+      }
+      results.push(result);
     }
     for (const [url, error] of response.failed) {
       failed.push({ url, error: error.message });
@@ -1285,6 +1506,9 @@ if (typeof process !== "undefined") {
     await closeBrowserService();
   });
 }
+
+// src/utils/index.ts
+init_image_validator();
 
 // src/ports/search.port.ts
 var noopWebSearch = {
@@ -1577,6 +1801,9 @@ function parseJsonResults(content, maxResults) {
   extractedImageSchema,
   extractedVideoSchema,
   getBrowserService,
+  isHDImage,
+  isReliableDomain,
+  isUnreliableDomain,
   logDebug,
   noopWebScraper,
   noopWebSearch,
@@ -1585,9 +1812,13 @@ function parseJsonResults(content, maxResults) {
   parseJsonResults,
   parseSearchResults,
   parseVideoResults,
+  scoreImage,
   scrapeResultSchema,
   searchResultSchema,
   searchResultsSchema,
+  selectBestImage,
+  validateAndScoreImages,
+  validateImageUrl,
   videoProviderSchema,
   webBatchScrapeTool,
   webHealthCheckTool,
