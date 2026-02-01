@@ -250,7 +250,7 @@ declare function getBrowserService(options?: BrowserServiceOptions): BrowserServ
 declare function closeBrowserService(): Promise<void>;
 
 /**
- * Write a debug log entry to web.log file AND console
+ * Write a debug log entry to web.log file (and console in dev mode)
  */
 declare function logDebug(context: string, message: string, data?: unknown): void;
 /**

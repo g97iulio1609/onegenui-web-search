@@ -6,9 +6,10 @@ import fs from "fs";
 import path from "path";
 
 const LOG_FILE = path.resolve(process.cwd(), "web.log");
+const DEBUG = process.env.NODE_ENV === "development";
 
 /**
- * Write a debug log entry to web.log file AND console
+ * Write a debug log entry to web.log file (and console in dev mode)
  */
 export function logDebug(
   context: string,
@@ -18,13 +19,15 @@ export function logDebug(
   const timestamp = new Date().toISOString();
   const entry = `[${timestamp}] [${context}] ${message}${data ? ` | ${JSON.stringify(data)}` : ""}`;
 
-  // Always log to console for real-time visibility
-  console.log(`🔍 ${entry}`);
+  // Console only in development
+  if (DEBUG) {
+    console.log(`🔍 ${entry}`);
+  }
 
   try {
     fs.appendFileSync(LOG_FILE, entry + "\n");
-  } catch (e) {
-    // File write failed, console already logged above
+  } catch {
+    // File write failed silently
   }
 }
 

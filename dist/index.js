@@ -598,13 +598,16 @@ async function closeBrowserService() {
 var import_fs = __toESM(require("fs"));
 var import_path = __toESM(require("path"));
 var LOG_FILE = import_path.default.resolve(process.cwd(), "web.log");
+var DEBUG = process.env.NODE_ENV === "development";
 function logDebug(context, message, data) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();
   const entry = `[${timestamp}] [${context}] ${message}${data ? ` | ${JSON.stringify(data)}` : ""}`;
-  console.log(`\u{1F50D} ${entry}`);
+  if (DEBUG) {
+    console.log(`\u{1F50D} ${entry}`);
+  }
   try {
     import_fs.default.appendFileSync(LOG_FILE, entry + "\n");
-  } catch (e) {
+  } catch {
   }
 }
 function clearLog() {
