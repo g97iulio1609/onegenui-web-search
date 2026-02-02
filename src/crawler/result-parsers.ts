@@ -13,9 +13,9 @@ export function parseImageResults(
 ): SearchResult[] {
   const results: SearchResult[] = [];
 
-  // Prefer enhanced media.images, fallback to legacy images
+  // Prefer enhanced media.images, fallback to basic images array
   const enhancedImages = pageContent.media?.images || [];
-  const legacyImages = pageContent.images || [];
+  const basicImages = pageContent.images || [];
 
   // Process enhanced images first
   for (const img of enhancedImages.slice(0, maxResults)) {
@@ -34,9 +34,9 @@ export function parseImageResults(
     });
   }
 
-  // If no enhanced images, use legacy format
+  // If no enhanced images, use basic format
   if (results.length === 0) {
-    for (const img of legacyImages.slice(0, maxResults)) {
+    for (const img of basicImages.slice(0, maxResults)) {
       results.push({
         title: img.alt || "Image",
         url: img.src,

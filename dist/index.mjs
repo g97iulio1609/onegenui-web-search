@@ -102,7 +102,7 @@ var scrapeResultSchema = z.object({
       href: z.string()
     })
   ).optional(),
-  // Legacy format for backwards compatibility
+  // Basic image format
   images: z.array(
     z.object({
       alt: z.string(),
@@ -1151,16 +1151,16 @@ var webScrapeTool = defineMcpTool({
           original: result.images.length,
           validated: validatedImages.length
         });
-        const legacyImages = validatedImages.map((img) => ({
+        const outputImages = validatedImages.map((img) => ({
           src: img.src,
           alt: img.alt ?? ""
         }));
-        result = { ...result, images: legacyImages };
+        result = { ...result, images: outputImages };
       } else {
         const best = selectBestImage2(extendedImages);
         if (best) {
-          const bestLegacy = { src: best.src, alt: best.alt ?? "" };
-          result = { ...result, images: [bestLegacy, ...result.images.filter((i) => i.src !== best.src)] };
+          const bestOutput = { src: best.src, alt: best.alt ?? "" };
+          result = { ...result, images: [bestOutput, ...result.images.filter((i) => i.src !== best.src)] };
         }
       }
     }
@@ -1215,11 +1215,11 @@ var webBatchScrapeTool = defineMcpTool({
           timeout: 2e3,
           requireHD: true
         });
-        const legacyImages = validatedImages.map((img) => ({
+        const outputImages = validatedImages.map((img) => ({
           src: img.src,
           alt: img.alt ?? ""
         }));
-        result = { ...result, images: legacyImages };
+        result = { ...result, images: outputImages };
       }
       results.push(result);
     }
@@ -1462,7 +1462,7 @@ function normalizeSearchType(rawType) {
 function parseImageResults(pageContent, maxResults) {
   const results = [];
   const enhancedImages = pageContent.media?.images || [];
-  const legacyImages = pageContent.images || [];
+  const basicImages = pageContent.images || [];
   for (const img of enhancedImages.slice(0, maxResults)) {
     results.push({
       title: img.alt || img.title || "Image",
@@ -1476,7 +1476,7 @@ function parseImageResults(pageContent, maxResults) {
     });
   }
   if (results.length === 0) {
-    for (const img of legacyImages.slice(0, maxResults)) {
+    for (const img of basicImages.slice(0, maxResults)) {
       results.push({
         title: img.alt || "Image",
         url: img.src,

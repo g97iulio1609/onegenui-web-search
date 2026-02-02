@@ -44,7 +44,7 @@ describe("result-parsers", () => {
       expect(results[1]!.snippet).toBe("A dog");
     });
 
-    it("should fallback to legacy images format", () => {
+    it("should fallback to basic images format", () => {
       const pageContent: ScrapeResult = {
         url: "https://example.com",
         title: "Test",

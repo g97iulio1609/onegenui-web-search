@@ -239,7 +239,7 @@ export const webScrapeTool = defineMcpTool({
     if (includeImages && result.images && result.images.length > 0) {
       const { validateAndScoreImages, selectBestImage } = await import("./utils/image-validator.js");
       
-      // Convert legacy format to ExtractedImage for validation
+      // Convert to ExtractedImage for validation
       const extendedImages = result.images.map(img => ({
         src: img.src,
         alt: img.alt,
@@ -258,18 +258,18 @@ export const webScrapeTool = defineMcpTool({
           validated: validatedImages.length,
         });
         
-        // Convert back to legacy format
-        const legacyImages = validatedImages.map(img => ({
+        // Convert to output format
+        const outputImages = validatedImages.map(img => ({
           src: img.src,
           alt: img.alt ?? "",
         }));
-        result = { ...result, images: legacyImages };
+        result = { ...result, images: outputImages };
       } else {
         // Just score and sort without validation
         const best = selectBestImage(extendedImages);
         if (best) {
-          const bestLegacy = { src: best.src, alt: best.alt ?? "" };
-          result = { ...result, images: [bestLegacy, ...result.images.filter(i => i.src !== best.src)] };
+          const bestOutput = { src: best.src, alt: best.alt ?? "" };
+          result = { ...result, images: [bestOutput, ...result.images.filter(i => i.src !== best.src)] };
         }
       }
     }
@@ -353,7 +353,7 @@ export const webBatchScrapeTool = defineMcpTool({
       
       // Validate images if requested
       if (includeImages && validateImages && result.images && result.images.length > 0) {
-        // Convert legacy format to ExtractedImage
+        // Convert to ExtractedImage
         const extendedImages = result.images.map(img => ({
           src: img.src,
           alt: img.alt,
@@ -365,12 +365,12 @@ export const webBatchScrapeTool = defineMcpTool({
           requireHD: true,
         });
         
-        // Convert back to legacy format
-        const legacyImages = validatedImages.map(img => ({
+        // Convert to output format
+        const outputImages = validatedImages.map(img => ({
           src: img.src,
           alt: img.alt ?? "",
         }));
-        result = { ...result, images: legacyImages };
+        result = { ...result, images: outputImages };
       }
       
       results.push(result);

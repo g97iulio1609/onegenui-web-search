@@ -141,7 +141,7 @@ export const scrapeResultSchema = z.object({
       }),
     )
     .optional(),
-  // Legacy format for backwards compatibility
+  // Basic image format
   images: z
     .array(
       z.object({
