@@ -28,11 +28,11 @@
         "zod-to-json-schema": "^3.24.0"
     },
     "peerDependencies": {
-        "ai": "^6.0.0"
+        "ai": "^6.0.68"
     },
     "devDependencies": {
         "@repo/typescript-config": "workspace:*",
-        "ai": "^6.0.39",
+        "ai": "^6.0.68",
         "tsup": "^8.0.0",
         "typescript": "5.9.2"
     }
