@@ -2,6 +2,7 @@
 // @onegenui/web-search - Web Search Use Case
 // =============================================================================
 
+import { createLogger } from "@onegenui/utils";
 import type {
   WebSearchPort,
   ExtendedSearchOptions,
@@ -15,6 +16,8 @@ import type {
   BatchScrapeResponse,
   ScrapeProgress,
 } from "../ports/scraper.port";
+
+const log = createLogger({ prefix: "web-search" });
 
 /**
  * Retry configuration
@@ -346,7 +349,7 @@ export class WebSearchUseCase {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         if (attempt < maxRetries) {
-          console.log(
+          log.debug(
             `[WebSearchUseCase] ${adapterName} attempt ${attempt + 1} failed, retrying in ${delay}ms...`,
           );
           await this.sleep(delay);
@@ -393,7 +396,7 @@ export class WebSearchUseCase {
 
     if (state.failures >= this.circuitThreshold) {
       state.open = true;
-      console.warn(
+      log.warn(
         `[WebSearchUseCase] Circuit opened for ${name} after ${state.failures} failures`,
       );
     }

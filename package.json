@@ -21,6 +21,7 @@
     },
     "dependencies": {
         "@onegenui/mcp": "workspace:*",
+        "@onegenui/utils": "workspace:*",
         "agent-browser": "^0.1.0",
         "onecrawl": "workspace:*",
         "zod": "^4.0.0",

@@ -626,6 +626,8 @@ var import_zod2 = require("zod");
 var import_mcp = require("@onegenui/mcp");
 
 // src/use-cases/web-search.use-case.ts
+var import_utils = require("@onegenui/utils");
+var log = (0, import_utils.createLogger)({ prefix: "web-search" });
 var DEFAULT_RETRY_CONFIG = {
   maxRetries: 3,
   initialDelay: 1e3,
@@ -851,7 +853,7 @@ var WebSearchUseCase = class {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         if (attempt < maxRetries) {
-          console.log(
+          log.debug(
             `[WebSearchUseCase] ${adapterName} attempt ${attempt + 1} failed, retrying in ${delay}ms...`
           );
           await this.sleep(delay);
@@ -887,7 +889,7 @@ var WebSearchUseCase = class {
     state.lastFailure = Date.now();
     if (state.failures >= this.circuitThreshold) {
       state.open = true;
-      console.warn(
+      log.warn(
         `[WebSearchUseCase] Circuit opened for ${name} after ${state.failures} failures`
       );
     }
