@@ -39,6 +39,10 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   backoffMultiplier: 2,
   maxDelay: 10000,
 };
+const DEFAULT_SEARCH_TIMEOUT_MS = 60000;
+const DEFAULT_SCRAPE_TIMEOUT_MS = 30000;
+const MIN_OPERATION_TIMEOUT_MS = 1000;
+const MAX_OPERATION_TIMEOUT_MS = 300000;
 
 /**
  * Health check result
@@ -97,7 +101,11 @@ export class WebSearchUseCase {
     query: string,
     options: ExtendedSearchOptions = {},
   ): Promise<SearchResponse> {
-    const { onProgress } = options;
+    const { onProgress, signal } = options;
+    const timeoutMs = this.normalizeTimeout(
+      options.timeout,
+      DEFAULT_SEARCH_TIMEOUT_MS,
+    );
     let lastError: Error | null = null;
 
     for (const adapter of this.searchAdapters) {
@@ -114,9 +122,10 @@ export class WebSearchUseCase {
 
       try {
         const response = await this.executeWithRetry(
-          () =>
+          (attemptSignal) =>
             adapter.search(query, {
               ...options,
+              signal: attemptSignal,
               onProgress: (progress) => {
                 onProgress?.({
                   ...progress,
@@ -125,6 +134,10 @@ export class WebSearchUseCase {
               },
             }),
           name,
+          {
+            timeoutMs,
+            signal,
+          },
         );
 
         // Success - reset circuit
@@ -151,7 +164,11 @@ export class WebSearchUseCase {
     url: string,
     options: ExtendedScrapeOptions = {},
   ): Promise<ScrapeResponse> {
-    const { onProgress } = options;
+    const { onProgress, signal } = options;
+    const timeoutMs = this.normalizeTimeout(
+      options.timeout,
+      DEFAULT_SCRAPE_TIMEOUT_MS,
+    );
     let lastError: Error | null = null;
 
     for (const adapter of this.scraperAdapters) {
@@ -169,9 +186,10 @@ export class WebSearchUseCase {
 
       try {
         const response = await this.executeWithRetry(
-          () =>
+          (attemptSignal) =>
             adapter.scrape(url, {
               ...options,
+              signal: attemptSignal,
               onProgress: (progress) => {
                 onProgress?.({
                   ...progress,
@@ -180,6 +198,10 @@ export class WebSearchUseCase {
               },
             }),
           name,
+          {
+            timeoutMs,
+            signal,
+          },
         );
 
         // Success - reset circuit
@@ -334,19 +356,56 @@ export class WebSearchUseCase {
    * Execute with exponential backoff retry
    */
   private async executeWithRetry<T>(
-    fn: () => Promise<T>,
+    fn: (signal: AbortSignal) => Promise<T>,
     adapterName: string,
+    options: {
+      timeoutMs: number;
+      signal?: AbortSignal;
+    },
   ): Promise<T> {
     const { maxRetries, initialDelay, backoffMultiplier, maxDelay } =
       this.retryConfig;
+    const deadline = Date.now() + options.timeoutMs;
     let lastError: Error | null = null;
     let delay = initialDelay;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (options.signal?.aborted) {
+        throw new Error(`${adapterName} aborted`);
+      }
+
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        throw new Error(
+          `${adapterName} timed out after ${options.timeoutMs}ms`,
+        );
+      }
+
+      const attemptController = new AbortController();
+      const abortParent = () => attemptController.abort();
+      const timeoutId = setTimeout(() => attemptController.abort(), remainingMs);
+
+      if (options.signal) {
+        if (options.signal.aborted) {
+          clearTimeout(timeoutId);
+          throw new Error(`${adapterName} aborted`);
+        }
+        options.signal.addEventListener("abort", abortParent, { once: true });
+      }
+
       try {
-        return await fn();
+        return await fn(attemptController.signal);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (options.signal?.aborted) {
+          throw new Error(`${adapterName} aborted`);
+        }
+        if (Date.now() >= deadline) {
+          throw new Error(
+            `${adapterName} timed out after ${options.timeoutMs}ms`,
+          );
+        }
 
         if (attempt < maxRetries) {
           log.debug(
@@ -355,6 +414,9 @@ export class WebSearchUseCase {
           await this.sleep(delay);
           delay = Math.min(delay * backoffMultiplier, maxDelay);
         }
+      } finally {
+        clearTimeout(timeoutId);
+        options.signal?.removeEventListener("abort", abortParent);
       }
     }
 
@@ -416,5 +478,18 @@ export class WebSearchUseCase {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private normalizeTimeout(
+    timeoutMs: number | undefined,
+    fallback: number,
+  ): number {
+    if (typeof timeoutMs !== "number" || !Number.isFinite(timeoutMs)) {
+      return fallback;
+    }
+    return Math.min(
+      MAX_OPERATION_TIMEOUT_MS,
+      Math.max(MIN_OPERATION_TIMEOUT_MS, timeoutMs),
+    );
   }
 }

@@ -753,6 +753,7 @@ declare class WebSearchUseCase {
      * Sleep helper
      */
     private sleep;
+    private normalizeTimeout;
 }
 
 /**

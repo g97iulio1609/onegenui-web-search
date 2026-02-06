@@ -13,15 +13,15 @@
 [34mESM[39m Build start
 [32mCJS[39m [1mdist/index.js     [22m[32m57.51 KB[39m
 [32mCJS[39m [1mdist/index.js.map [22m[32m120.99 KB[39m
-[32mCJS[39m ⚡️ Build success in 16ms
-[32mESM[39m [1mdist/index.mjs                        [22m[32m48.25 KB[39m
+[32mCJS[39m ⚡️ Build success in 15ms
 [32mESM[39m [1mdist/image-validator-UGIVQ6LF.mjs     [22m[32m371.00 B[39m
 [32mESM[39m [1mdist/chunk-NDPPPUDM.mjs               [22m[32m3.97 KB[39m
+[32mESM[39m [1mdist/index.mjs                        [22m[32m48.25 KB[39m
+[32mESM[39m [1mdist/chunk-NDPPPUDM.mjs.map           [22m[32m9.08 KB[39m
 [32mESM[39m [1mdist/image-validator-UGIVQ6LF.mjs.map [22m[32m71.00 B[39m
 [32mESM[39m [1mdist/index.mjs.map                    [22m[32m110.72 KB[39m
-[32mESM[39m [1mdist/chunk-NDPPPUDM.mjs.map           [22m[32m9.08 KB[39m
-[32mESM[39m ⚡️ Build success in 16ms
+[32mESM[39m ⚡️ Build success in 15ms
 DTS Build start
-DTS ⚡️ Build success in 802ms
+DTS ⚡️ Build success in 703ms
 DTS dist/index.d.ts  25.50 KB
 DTS dist/index.d.mts 25.50 KB
