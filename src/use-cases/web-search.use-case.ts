@@ -2,51 +2,31 @@
 // @onegenui/web-search - Web Search Use Case
 // =============================================================================
 
-import { createLogger } from "@onegenui/utils";
 import type {
   WebSearchPort,
   ExtendedSearchOptions,
   SearchResponse,
-  SearchProgress,
 } from "../ports/search.port";
 import type {
   WebScraperPort,
   ExtendedScrapeOptions,
   ScrapeResponse,
   BatchScrapeResponse,
-  ScrapeProgress,
 } from "../ports/scraper.port";
+import { CircuitBreaker } from "./circuit-breaker";
+import {
+  executeWithRetry,
+  DEFAULT_RETRY_CONFIG,
+  type RetryConfig,
+} from "./retry-executor";
 
-const log = createLogger({ prefix: "web-search" });
+export type { RetryConfig } from "./retry-executor";
 
-/**
- * Retry configuration
- */
-export interface RetryConfig {
-  /** Maximum number of retries */
-  maxRetries: number;
-  /** Initial delay in ms */
-  initialDelay: number;
-  /** Multiplier for exponential backoff */
-  backoffMultiplier: number;
-  /** Maximum delay in ms */
-  maxDelay: number;
-}
-
-const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 3,
-  initialDelay: 1000,
-  backoffMultiplier: 2,
-  maxDelay: 10000,
-};
 const DEFAULT_SEARCH_TIMEOUT_MS = 60000;
 const DEFAULT_SCRAPE_TIMEOUT_MS = 30000;
 const MIN_OPERATION_TIMEOUT_MS = 1000;
 const MAX_OPERATION_TIMEOUT_MS = 300000;
 
-/**
- * Health check result
- */
 export interface HealthStatus {
   name: string;
   available: boolean;
@@ -55,27 +35,14 @@ export interface HealthStatus {
 }
 
 /**
- * WebSearchUseCase - Orchestrates search and scraping with fallback chain
- *
- * Features:
- * - Primary/fallback adapter chain
- * - Exponential backoff retry
- * - Circuit breaker pattern
- * - Partial failure handling
- * - Health checks
+ * WebSearchUseCase - Orchestrates search and scraping with fallback chain,
+ * circuit breaker, and exponential backoff retry.
  */
 export class WebSearchUseCase {
   private searchAdapters: WebSearchPort[];
   private scraperAdapters: WebScraperPort[];
   private retryConfig: RetryConfig;
-
-  // Circuit breaker state
-  private circuitState = new Map<
-    string,
-    { failures: number; lastFailure: number; open: boolean }
-  >();
-  private circuitThreshold = 5;
-  private circuitResetTime = 60000; // 1 minute
+  private circuit = new CircuitBreaker();
 
   constructor(
     searchAdapters: WebSearchPort[],
@@ -94,137 +61,84 @@ export class WebSearchUseCase {
     this.retryConfig = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
   }
 
-  /**
-   * Search with fallback chain
-   */
   async search(
     query: string,
     options: ExtendedSearchOptions = {},
   ): Promise<SearchResponse> {
     const { onProgress, signal } = options;
-    const timeoutMs = this.normalizeTimeout(
-      options.timeout,
-      DEFAULT_SEARCH_TIMEOUT_MS,
-    );
+    const timeoutMs = normalizeTimeout(options.timeout, DEFAULT_SEARCH_TIMEOUT_MS);
     let lastError: Error | null = null;
 
     for (const adapter of this.searchAdapters) {
       const name = adapter.getName();
-
-      // Check circuit breaker
-      if (this.isCircuitOpen(name)) {
-        onProgress?.({
-          phase: "starting",
-          message: `Skipping ${name} (circuit open)`,
-        });
+      if (this.circuit.isOpen(name)) {
+        onProgress?.({ phase: "starting", message: `Skipping ${name} (circuit open)` });
         continue;
       }
 
       try {
-        const response = await this.executeWithRetry(
-          (attemptSignal) =>
+        const response = await executeWithRetry(
+          (sig) =>
             adapter.search(query, {
               ...options,
-              signal: attemptSignal,
-              onProgress: (progress) => {
-                onProgress?.({
-                  ...progress,
-                  message: `[${name}] ${progress.message}`,
-                });
-              },
+              signal: sig,
+              onProgress: (p) => onProgress?.({ ...p, message: `[${name}] ${p.message}` }),
             }),
           name,
-          {
-            timeoutMs,
-            signal,
-          },
+          this.retryConfig,
+          { timeoutMs, signal },
         );
-
-        // Success - reset circuit
-        this.resetCircuit(name);
+        this.circuit.reset(name);
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        this.recordFailure(name);
-
-        onProgress?.({
-          phase: "error",
-          message: `${name} failed: ${lastError.message}, trying fallback...`,
-        });
+        this.circuit.recordFailure(name);
+        onProgress?.({ phase: "error", message: `${name} failed: ${lastError.message}, trying fallback...` });
       }
     }
 
     throw lastError || new Error("All search adapters failed");
   }
 
-  /**
-   * Scrape single URL with fallback chain
-   */
   async scrape(
     url: string,
     options: ExtendedScrapeOptions = {},
   ): Promise<ScrapeResponse> {
     const { onProgress, signal } = options;
-    const timeoutMs = this.normalizeTimeout(
-      options.timeout,
-      DEFAULT_SCRAPE_TIMEOUT_MS,
-    );
+    const timeoutMs = normalizeTimeout(options.timeout, DEFAULT_SCRAPE_TIMEOUT_MS);
     let lastError: Error | null = null;
 
     for (const adapter of this.scraperAdapters) {
       const name = adapter.getName();
-
-      // Check circuit breaker
-      if (this.isCircuitOpen(name)) {
-        onProgress?.({
-          phase: "starting",
-          message: `Skipping ${name} (circuit open)`,
-          url,
-        });
+      if (this.circuit.isOpen(name)) {
+        onProgress?.({ phase: "starting", message: `Skipping ${name} (circuit open)`, url });
         continue;
       }
 
       try {
-        const response = await this.executeWithRetry(
-          (attemptSignal) =>
+        const response = await executeWithRetry(
+          (sig) =>
             adapter.scrape(url, {
               ...options,
-              signal: attemptSignal,
-              onProgress: (progress) => {
-                onProgress?.({
-                  ...progress,
-                  message: `[${name}] ${progress.message}`,
-                });
-              },
+              signal: sig,
+              onProgress: (p) => onProgress?.({ ...p, message: `[${name}] ${p.message}` }),
             }),
           name,
-          {
-            timeoutMs,
-            signal,
-          },
+          this.retryConfig,
+          { timeoutMs, signal },
         );
-
-        // Success - reset circuit
-        this.resetCircuit(name);
+        this.circuit.reset(name);
         return response;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        this.recordFailure(name);
-
-        onProgress?.({
-          phase: "error",
-          message: `${name} failed: ${lastError.message}, trying fallback...`,
-          url,
-        });
+        this.circuit.recordFailure(name);
+        onProgress?.({ phase: "error", message: `${name} failed: ${lastError.message}, trying fallback...`, url });
       }
     }
 
     throw lastError || new Error("All scraper adapters failed");
   }
 
-  /**
-   * Scrape multiple URLs with fallback and partial results
-   */
   async scrapeMany(
     urls: string[],
     options: ExtendedScrapeOptions = {},
@@ -234,55 +148,36 @@ export class WebSearchUseCase {
     const failed = new Map<string, Error>();
     const startTime = Date.now();
 
-    // Try primary adapter first for batch (more efficient)
-    const primaryAdapter = this.scraperAdapters.find(
-      (a) => !this.isCircuitOpen(a.getName()),
+    const primary = this.scraperAdapters.find(
+      (a) => !this.circuit.isOpen(a.getName()),
     );
 
-    if (primaryAdapter) {
-      const name = primaryAdapter.getName();
+    if (primary) {
+      const name = primary.getName();
       try {
-        const batchResult = await primaryAdapter.scrapeMany(urls, {
+        const batch = await primary.scrapeMany(urls, {
           ...options,
-          onProgress: (progress) => {
-            onProgress?.({
-              ...progress,
-              message: `[${name}] ${progress.message}`,
-            });
-          },
+          onProgress: (p) => onProgress?.({ ...p, message: `[${name}] ${p.message}` }),
         });
+        for (const [u, r] of batch.results) results.set(u, r);
 
-        // Merge results
-        for (const [url, response] of batchResult.results) {
-          results.set(url, response);
-        }
-
-        // Track failed URLs for retry
-        const failedUrls = Array.from(batchResult.failed.keys());
+        const failedUrls = Array.from(batch.failed.keys());
         if (failedUrls.length > 0) {
           onProgress?.({
             phase: "starting",
             message: `Retrying ${failedUrls.length} failed URLs with fallback...`,
             url: failedUrls[0]!,
           });
-
-          // Retry failed URLs with fallback adapters
-          for (const url of failedUrls) {
+          for (const u of failedUrls) {
             try {
-              const response = await this.scrape(url, options);
-              results.set(url, response);
-            } catch (error) {
-              failed.set(
-                url,
-                error instanceof Error ? error : new Error(String(error)),
-              );
+              results.set(u, await this.scrape(u, options));
+            } catch (e) {
+              failed.set(u, e instanceof Error ? e : new Error(String(e)));
             }
           }
         }
-
         return { results, failed, totalDuration: Date.now() - startTime };
       } catch (error) {
-        // Primary batch failed, fall through to individual scraping
         onProgress?.({
           phase: "error",
           message: `Batch scrape failed: ${error instanceof Error ? error.message : String(error)}`,
@@ -291,42 +186,24 @@ export class WebSearchUseCase {
       }
     }
 
-    // Fallback: scrape individually with fallback chain
-    for (const url of urls) {
+    for (const u of urls) {
       try {
-        const response = await this.scrape(url, options);
-        results.set(url, response);
-      } catch (error) {
-        failed.set(
-          url,
-          error instanceof Error ? error : new Error(String(error)),
-        );
+        results.set(u, await this.scrape(u, options));
+      } catch (e) {
+        failed.set(u, e instanceof Error ? e : new Error(String(e)));
       }
     }
-
     return { results, failed, totalDuration: Date.now() - startTime };
   }
 
-  /**
-   * Check health of all adapters
-   */
-  async healthCheck(): Promise<{
-    search: HealthStatus[];
-    scraper: HealthStatus[];
-  }> {
-    const checkAdapter = async (
+  async healthCheck(): Promise<{ search: HealthStatus[]; scraper: HealthStatus[] }> {
+    const check = async (
       adapter: WebSearchPort | WebScraperPort,
     ): Promise<HealthStatus> => {
       const name = adapter.getName();
       const start = Date.now();
-
       try {
-        const available = await adapter.isAvailable();
-        return {
-          name,
-          available,
-          latency: Date.now() - start,
-        };
+        return { name, available: await adapter.isAvailable(), latency: Date.now() - start };
       } catch (error) {
         return {
           name,
@@ -337,159 +214,18 @@ export class WebSearchUseCase {
       }
     };
 
-    const [searchHealth, scraperHealth] = await Promise.all([
-      Promise.all(this.searchAdapters.map(checkAdapter)),
-      Promise.all(this.scraperAdapters.map(checkAdapter)),
+    const [search, scraper] = await Promise.all([
+      Promise.all(this.searchAdapters.map(check)),
+      Promise.all(this.scraperAdapters.map(check)),
     ]);
-
-    return {
-      search: searchHealth,
-      scraper: scraperHealth,
-    };
+    return { search, scraper };
   }
+}
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Private Methods
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Execute with exponential backoff retry
-   */
-  private async executeWithRetry<T>(
-    fn: (signal: AbortSignal) => Promise<T>,
-    adapterName: string,
-    options: {
-      timeoutMs: number;
-      signal?: AbortSignal;
-    },
-  ): Promise<T> {
-    const { maxRetries, initialDelay, backoffMultiplier, maxDelay } =
-      this.retryConfig;
-    const deadline = Date.now() + options.timeoutMs;
-    let lastError: Error | null = null;
-    let delay = initialDelay;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      if (options.signal?.aborted) {
-        throw new Error(`${adapterName} aborted`);
-      }
-
-      const remainingMs = deadline - Date.now();
-      if (remainingMs <= 0) {
-        throw new Error(
-          `${adapterName} timed out after ${options.timeoutMs}ms`,
-        );
-      }
-
-      const attemptController = new AbortController();
-      const abortParent = () => attemptController.abort();
-      const timeoutId = setTimeout(() => attemptController.abort(), remainingMs);
-
-      if (options.signal) {
-        if (options.signal.aborted) {
-          clearTimeout(timeoutId);
-          throw new Error(`${adapterName} aborted`);
-        }
-        options.signal.addEventListener("abort", abortParent, { once: true });
-      }
-
-      try {
-        return await fn(attemptController.signal);
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-
-        if (options.signal?.aborted) {
-          throw new Error(`${adapterName} aborted`);
-        }
-        if (Date.now() >= deadline) {
-          throw new Error(
-            `${adapterName} timed out after ${options.timeoutMs}ms`,
-          );
-        }
-
-        if (attempt < maxRetries) {
-          log.debug(
-            `[WebSearchUseCase] ${adapterName} attempt ${attempt + 1} failed, retrying in ${delay}ms...`,
-          );
-          await this.sleep(delay);
-          delay = Math.min(delay * backoffMultiplier, maxDelay);
-        }
-      } finally {
-        clearTimeout(timeoutId);
-        options.signal?.removeEventListener("abort", abortParent);
-      }
-    }
-
-    throw (
-      lastError ||
-      new Error(`${adapterName} failed after ${maxRetries} retries`)
-    );
-  }
-
-  /**
-   * Check if circuit is open for an adapter
-   */
-  private isCircuitOpen(name: string): boolean {
-    const state = this.circuitState.get(name);
-    if (!state || !state.open) return false;
-
-    // Check if it's time to reset
-    if (Date.now() - state.lastFailure > this.circuitResetTime) {
-      state.open = false;
-      state.failures = 0;
-      return false;
-    }
-
-    return true;
-  }
-
-  /**
-   * Record a failure for circuit breaker
-   */
-  private recordFailure(name: string): void {
-    const state = this.circuitState.get(name) || {
-      failures: 0,
-      lastFailure: 0,
-      open: false,
-    };
-
-    state.failures++;
-    state.lastFailure = Date.now();
-
-    if (state.failures >= this.circuitThreshold) {
-      state.open = true;
-      log.warn(
-        `[WebSearchUseCase] Circuit opened for ${name} after ${state.failures} failures`,
-      );
-    }
-
-    this.circuitState.set(name, state);
-  }
-
-  /**
-   * Reset circuit for an adapter
-   */
-  private resetCircuit(name: string): void {
-    this.circuitState.delete(name);
-  }
-
-  /**
-   * Sleep helper
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  private normalizeTimeout(
-    timeoutMs: number | undefined,
-    fallback: number,
-  ): number {
-    if (typeof timeoutMs !== "number" || !Number.isFinite(timeoutMs)) {
-      return fallback;
-    }
-    return Math.min(
-      MAX_OPERATION_TIMEOUT_MS,
-      Math.max(MIN_OPERATION_TIMEOUT_MS, timeoutMs),
-    );
-  }
+function normalizeTimeout(
+  timeoutMs: number | undefined,
+  fallback: number,
+): number {
+  if (typeof timeoutMs !== "number" || !Number.isFinite(timeoutMs)) return fallback;
+  return Math.min(MAX_OPERATION_TIMEOUT_MS, Math.max(MIN_OPERATION_TIMEOUT_MS, timeoutMs));
 }
