@@ -9,10 +9,6 @@ import { defineMcpTool } from "@onegenui/mcp";
 import { logDebug } from "./logger.native.js";
 import type { SearchResults, ScrapeResult } from "./types.js";
 import { WebSearchUseCase } from "./use-cases/index.js";
-import {
-  OneCrawlSearchAdapter,
-  OneCrawlScraperAdapter,
-} from "./adapters/index.native.js";
 import type { SearchProgress, ScrapeProgress } from "./ports/index.js";
 
 // -----------------------------------------------------------------------------
@@ -31,9 +27,14 @@ let webSearchUseCaseInstance: WebSearchUseCase | null = null;
 /**
  * Get or create the WebSearchUseCase with OneCrawl adapters only.
  * BrowserService fallback is not available on React Native.
+ * Adapters are dynamically imported to defer the OneCrawl dependency tree.
  */
-function getWebSearchUseCase(): WebSearchUseCase {
+async function getWebSearchUseCase(): Promise<WebSearchUseCase> {
   if (webSearchUseCaseInstance) return webSearchUseCaseInstance;
+
+  const { OneCrawlSearchAdapter, OneCrawlScraperAdapter } = await import(
+    "./adapters/index.native.js"
+  );
 
   webSearchUseCaseInstance = new WebSearchUseCase(
     [new OneCrawlSearchAdapter()],
@@ -50,13 +51,36 @@ function getWebSearchUseCase(): WebSearchUseCase {
 }
 
 // -----------------------------------------------------------------------------
-// Progress Streaming Helper
+// Cached Image Validator Import
 // -----------------------------------------------------------------------------
+
+let imageValidatorPromise: Promise<
+  typeof import("./utils/image-validator.js")
+> | null = null;
+
+function getImageValidator() {
+  if (!imageValidatorPromise) {
+    imageValidatorPromise = import("./utils/image-validator.js");
+  }
+  return imageValidatorPromise;
+}
+
+// -----------------------------------------------------------------------------
+// Progress Streaming Helper (cached per tool name)
+// -----------------------------------------------------------------------------
+
+const progressLoggerCache = new Map<
+  string,
+  (progress: SearchProgress | ScrapeProgress) => void
+>();
 
 function createProgressLogger(
   toolName: string,
 ): (progress: SearchProgress | ScrapeProgress) => void {
-  return (progress) => {
+  let logger = progressLoggerCache.get(toolName);
+  if (logger) return logger;
+
+  logger = (progress) => {
     logDebug(toolName, progress.message, {
       phase: progress.phase,
       ...("results" in progress && progress.results !== undefined
@@ -64,6 +88,8 @@ function createProgressLogger(
         : {}),
     });
   };
+  progressLoggerCache.set(toolName, logger);
+  return logger;
 }
 
 // -----------------------------------------------------------------------------
@@ -115,7 +141,7 @@ export const webSearchTool = defineMcpTool({
       type,
     });
 
-    const useCase = getWebSearchUseCase();
+    const useCase = await getWebSearchUseCase();
     const response = await useCase.search(query, {
       maxResults: maxResults ?? 10,
       engine,
@@ -195,7 +221,7 @@ export const webScrapeTool = defineMcpTool({
   }): Promise<ScrapeResult> {
     logDebug("WEB-SCRAPE", `Starting scrape`, { url });
 
-    const useCase = getWebSearchUseCase();
+    const useCase = await getWebSearchUseCase();
     const response = await useCase.scrape(url, {
       includeLinks,
       includeImages,
@@ -207,9 +233,8 @@ export const webScrapeTool = defineMcpTool({
 
     let result = response.result;
     if (includeImages && result.images && result.images.length > 0) {
-      const { validateAndScoreImages, selectBestImage } = await import(
-        "./utils/image-validator.js"
-      );
+      const { validateAndScoreImages, selectBestImage } =
+        await getImageValidator();
 
       const extendedImages = result.images.map((img) => ({
         src: img.src,
@@ -317,7 +342,7 @@ export const webBatchScrapeTool = defineMcpTool({
       urlCount: urls.length,
     });
 
-    const useCase = getWebSearchUseCase();
+    const useCase = await getWebSearchUseCase();
     const response = await useCase.scrapeMany(urls, {
       includeLinks,
       includeImages,
@@ -329,9 +354,7 @@ export const webBatchScrapeTool = defineMcpTool({
     const results: ScrapeResult[] = [];
     const failed: Array<{ url: string; error: string }> = [];
 
-    const { validateAndScoreImages } = await import(
-      "./utils/image-validator.js"
-    );
+    const { validateAndScoreImages } = await getImageValidator();
 
     for (const [_url, scrapeResponse] of response.results) {
       let result = scrapeResponse.result;
@@ -408,7 +431,7 @@ export const webHealthCheckTool = defineMcpTool({
   }> {
     logDebug("WEB-HEALTH", `Starting health check`);
 
-    const useCase = getWebSearchUseCase();
+    const useCase = await getWebSearchUseCase();
     const health = await useCase.healthCheck();
 
     logDebug("WEB-HEALTH", `Health check complete`, {

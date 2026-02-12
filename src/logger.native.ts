@@ -3,8 +3,12 @@
 // =============================================================================
 // Console-only logger without Node.js fs/path dependencies.
 
+declare const __DEV__: boolean | undefined;
+
 const DEBUG =
-  typeof process !== "undefined" && process.env?.NODE_ENV === "development";
+  typeof __DEV__ !== "undefined"
+    ? __DEV__
+    : typeof process !== "undefined" && process.env?.NODE_ENV === "development";
 
 /**
  * Write a debug log entry to console (React Native compatible).
@@ -15,12 +19,11 @@ export function logDebug(
   message: string,
   data?: unknown,
 ): void {
+  if (!DEBUG) return;
+
   const timestamp = new Date().toISOString();
   const entry = `[${timestamp}] [${context}] ${message}${data ? ` | ${JSON.stringify(data)}` : ""}`;
-
-  if (DEBUG) {
-    console.log(entry);
-  }
+  console.log(entry);
 }
 
 /**
