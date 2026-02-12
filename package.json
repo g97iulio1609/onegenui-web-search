@@ -8,9 +8,21 @@
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
-            "types": "./dist/index.d.ts",
-            "import": "./dist/index.mjs",
-            "require": "./dist/index.js"
+            "react-native": {
+                "types": "./dist/index.native.d.ts",
+                "import": "./dist/index.native.mjs",
+                "require": "./dist/index.native.js"
+            },
+            "node": {
+                "types": "./dist/index.d.ts",
+                "import": "./dist/index.mjs",
+                "require": "./dist/index.js"
+            },
+            "default": {
+                "types": "./dist/index.d.ts",
+                "import": "./dist/index.mjs",
+                "require": "./dist/index.js"
+            }
         }
     },
     "scripts": {
@@ -22,10 +34,12 @@
     "dependencies": {
         "@onegenui/mcp": "workspace:*",
         "@onegenui/utils": "workspace:*",
-        "agent-browser": "^0.1.0",
         "onecrawl": "workspace:*",
         "zod": "^4.0.0",
         "zod-to-json-schema": "^3.24.0"
+    },
+    "optionalDependencies": {
+        "agent-browser": "^0.1.0"
     },
     "peerDependencies": {
         "ai": "^6.0.68"
